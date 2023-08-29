@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>カスタム麻雀</title>
+        <link rel="stylesheet" type="text/css" href="game.css">
+    </head>
+    <body>
+        <header>
+            <div class="header-container">
+                <div class="header-left">
+                    カスタム麻雀
+                </div>        
+                <div class="header-right">
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <div id="game-board">
+                <div id="my-main-area">
+                    <div class="my">
+                        <div id="my-name" class="player-name">あああ</div>
+                        <div id="my-hand-tiles">あああ</div>
+                        <div id="my-meld-tiles">いいい</div>
+                    </div>
+                </div>
+                <div id="right-main-area">
+                    <div class="right">
+                        <div id="right-name" class="player-name">あああ</div>
+                        <div id="right-hand-tiles">aaa</div>
+                        <div id="right-meld-tiles">iii</div>
+                    </div>
+                </div>
+                <div id="opposite-main-area">
+                    <div class="opposite">
+                        <div id="opposite-name" class="player-name">あああ</div>
+                        <div id="opposite-hand-tiles">aaaa</div>
+                        <div id="opposite-meld-tiles">iii</div>
+                    </div>
+                </div>
+                <div id="left-main-area">
+                    <div class="left">
+                        <div id="left-name" class="player-name">あああ</div>
+                        <div id="left-hand-tiles">uuu</div>
+                        <div id="left-meld-tiles">eee</div>
+                    </div>
+                </div>
+
+                <div id="my-discard-area">
+                    <div class="my">
+                        <div id="my-discard-tiles">aaa</div>
+                    </div>
+                </div>
+                <div id="right-discard-area">
+                    <div class="right">
+                        <div id="right-discard-tiles">aaaa</div>
+                    </div>
+                </div>
+                <div id="opposite-discard-area">
+                    <div class="opposite">
+                        <div id="opposite-discard-tiles">aaa</div>
+                    </div>
+                </div>
+                <div id="left-discard-area">
+                    <div class="left">
+                        <div id="left-discard-tiles">eee</div>
+                    </div>
+                </div>
+
+                <div id="game-info-area">
+                    <div id="game-count-area">
+                        <div class="text-center">東1局</div>
+                        <div class="text-center" style="font-size: 24px;">0本場</div>
+                        <div class="text-center" style="font-size: 16px;">残り</div>
+                        <div class="text-center small">135枚</div>
+                    </div>
+                    <div id="dora-tile-area">
+                        <div class="dora-text">ドラ</div>
+                        <div id="dora-tiles">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="action-area">
+                    <input type="button" class="action-btn" id="chi-btn" value="チー" />                
+                    <input type="button" class="action-btn" id="pon-btn" value="ポン" />                
+                    <input type="button" class="action-btn" id="kan-btn" value="カン" />                
+                    <input type="button" class="action-btn" id="ron-btn" value="ロン" />                
+                    <input type="button" class="action-btn" id="riichi-btn" value="立直" />        
+                    <input type="button" class="action-btn" id="tsumo-btn" value="ツモ" />
+                    <input type="button" class="action-btn" id="skip-btn" value="スキップ" />        
+                </div>
+            </div>
+
+            <input type="checkbox" id="game-start-btn"/>
+            <label for="game-start-btn">Game Start</label>
+
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="game.js"></script>
+    </body>
+</html>

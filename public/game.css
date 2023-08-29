@@ -1,0 +1,244 @@
+  body {
+    height: 100vh;
+    margin: 0;
+  }
+
+  header{
+    height: 5vh;
+    width: 100%;
+    background-color: rgba(0, 118, 65, 1.0);
+    color: white;
+  }
+  .header-container{
+      width: 98%;
+      height: 100%;
+      margin: auto;
+      display: flex;
+      align-items: center;
+  }
+  .header-left{
+      font-size: 24px;
+      margin-right: auto;
+  }
+  /* .header-right{
+      width: 500px;
+      font-size: 18px;
+      margin-right: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+  } */
+
+  .main-container {
+    margin-top: 3px;
+     width: 100%;
+     display: flex;
+     background-color: #eeeeeeff;
+  }
+  
+  #game-board {
+    position: relative;
+    max-width: 1500px;
+    width: 100%;
+    height: 900px;
+    aspect-ratio: 15 / 9;
+    /* margin: auto; */
+    background-color: #ffffffff;
+  }
+
+  #my-main-area {
+    position: absolute;
+    top: 70%;
+    left: 0%;
+    width: 100%;
+    height: 30%;
+  }
+  
+  #right-main-area {
+    position: absolute;
+    bottom: calc(100% - 0%);
+    right: 0%;  /* left + widtgh */
+    width: calc(70% * (900 / 1500));  /* height / aspect*/
+    height: calc(13% * (1500 / 900));  /* width / aspect*/
+  }
+  
+  #opposite-main-area {
+    position: absolute;
+    top: 0%;
+    left: 13%;
+    width: 74%;
+    height: 14%;
+  }
+  
+  #left-main-area {
+    position: absolute;
+    bottom: calc(100% - 0%);
+    left: 0%;  /* left + widtgh */
+    width: calc(70% * (900 / 1500));  /* height / aspect*/
+    height: calc(13% * (1500 / 900));  /* width / aspect*/
+  }
+
+  #my-discard-area {
+    position: absolute;
+    top: 50%;
+    left: 30%;
+    width: 40%;
+    height: 20%;
+  }
+
+  #right-discard-area {
+    position: absolute;
+    bottom: calc(100% - 14%);
+    right: 13%;  /* left + widtgh */
+    width: calc(56% * (900 / 1500));  /* height / aspect*/
+    height: calc(17% * (1500 / 900));  /* width / aspect*/
+  }
+  
+  #opposite-discard-area {
+    position: absolute;
+    top: 14%;
+    left: 30%;
+    width: 40%;
+    height: 20%;
+  }
+
+  #left-discard-area {
+    position: absolute;
+    bottom: calc(100% - 14%);
+    left: 13%;  /* left + widtgh */
+    width: calc(56% * (900 / 1500));  /* height / aspect*/
+    height: calc(17% * (1500 / 900));  /* width / aspect*/
+  }
+
+  /* コンポーネントを90度回転する */
+  .my{
+    width: 100%;
+    height: 100%;
+    background-color:#0000ff80;
+    display: flex;
+  }
+  .right{
+    width: 100%;
+    height: 100%;
+    background-color:#00ffff80;
+    transform: rotate(-90deg);
+    transform-origin: right bottom;
+    display: flex;
+  }
+  .opposite{
+    width: 100%;
+    height: 100%;
+    background-color:#ff00ff80;
+    transform: rotate(180deg);
+  }
+  .left{
+    width: 100%;
+    height: 100%;
+    background-color:#ffff0080;
+    transform: rotate(90deg);
+    transform-origin: left bottom;
+  }
+
+  .main-area{
+    display: flex;
+  }
+  .discard-area{
+    display: flex;
+  }
+  
+
+
+
+  #game-info-area {
+    position: absolute;
+    top: 34%;
+    left: 30%;
+    width: 40%;
+    height: 16%;
+    display: flex;
+    background-color:#0000ff80;
+  }
+  #game-count-area {
+    /* display: flex; */
+    width: 25%;
+    height: 100%;
+    background-color:#ff00005f;
+  }
+  .text-center{
+    margin: auto;
+    text-align: center;
+    width: 100%;
+    color: #000;
+    font-size: 26px;
+  }
+  #dora-tile-area{
+    display: flex;
+    width: 75%;    
+    height: 100%;
+    background-color:#ffff005f;
+  }
+  .dora-text{
+    width: 8%;
+    height: 90%;
+    text-align: center;
+    writing-mode: vertical-rl; /* 縦書きの指定 */
+    margin: auto;
+    color: white;
+    font-size: 26px;
+    background-color:#ff00ff5f;
+  }
+  #dora-tiles{   
+    width: 90%;
+    height: 90%;
+    margin: auto;
+    background-color:#ff00ff5f;
+    /* display: flex; */
+    /* justify-content: flex-start; 要素を左寄せ */
+  }
+
+
+  #action-area{
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    width: 40%;
+    height: 15%;
+    display: flex;
+    /* background-color:#6cd2630f; */
+  }
+
+  .action-btn {
+    border: 0;
+    display: block;
+    line-height: 2.5;
+    margin: auto;
+    padding: 0 20px;
+    font-size: 1rem;
+    text-align: center;
+    color: #fff;
+    text-shadow: 1px 1px 1px #000;
+    border-radius: 10px;
+    background-color: rgba(220, 0, 0, 1);
+    background-image: linear-gradient(to top left, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2) 30%, rgba(0, 0, 0, 0));
+    box-shadow:
+      inset 2px 2px 3px rgba(255, 255, 255, 0.6),
+      inset -2px -2px 3px rgba(0, 0, 0, 0.6);
+  }
+  
+  .action-btn:hover {
+    background-color: rgba(255, 0, 0, 1);
+  }
+  
+  .action-btn:active {
+    box-shadow:
+      inset -2px -2px 3px rgba(255, 255, 255, 0.6),
+      inset 2px 2px 3px rgba(0, 0, 0, 0.6);
+  }
+
+  .hand-tiles{
+    margin-right: 100px;
+  }
+
+  .meld-tiles{
+    margin-left: 100px;
+  }

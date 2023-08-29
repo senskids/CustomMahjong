@@ -1,0 +1,16 @@
+{
+  "name": "custom_mahjong",
+  "version": "0.0.0",
+  "description": "web app of CustomMahjong",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "youseegreen&Maaagit",
+  "license": "ISC",
+  "dependencies": {
+    "@kobalab/majiang-core": "^1.1.0",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}

@@ -26,7 +26,7 @@
 6. Local 機能実装してcommit
 7. Local ```git checkout develop```
 8. Local ```git pull origin develop```
-9. Local ```git checkout -b feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
+9. Local ```git checkout feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
 10. Local ```git rebase develop
 11. Local ```git push origin feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
 12. Github feature/#(ISSUE番号)/(ISSUEの簡潔な内容) => developへのPull requestを作成

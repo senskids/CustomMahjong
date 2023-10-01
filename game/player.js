@@ -25,6 +25,7 @@ class Player{
             ron: false, 
             riichi: false, 
             kan: false, 
+            tsumo: false, 
             skip: false,                   // 考える, 九種九牌なども
         };
     }
@@ -55,7 +56,7 @@ class Player{
     // 自分がtileをツモした際に、何のアクションができるかチェックする
     checkEnableActionsForDrawTile(tile, is_replacement = false, field_info = null){
         // 捨てることは絶対できる
-        this.enable_actions = {discard: true, pon: false, chi: false, ron: false, riichi: false, kan: false, skip: false};
+        this.enable_actions = {discard: true, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
         // ツモあがり可能かチェック
         if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
@@ -70,7 +71,7 @@ class Player{
     checkEnableActionsForDiscardTile(seat_id, tile, field_info = null){
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         // 初期状態として何もしてはいけないをセット
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, skip: false};
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
         if (this.is_riichi) field_info.hupai.riichi = 1;
         // 自分が捨てた場合はreturn
         if (seat_relation == 0) return;     
@@ -88,7 +89,7 @@ class Player{
 
     // seat_idの人がtileを加槓した際に、アクション（槍槓）ができるかチェックする
     checkEnableActionsForKakanTile(seat_id, tile){
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, skip: false};
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
         // if (utils.canRon(this.hands, this.melds, seat_relation, tile, field_info) > 0) this.enable_actions.ron = true;
         console.log("[checkEnableActionsForKakanTile] not implemented");
     }

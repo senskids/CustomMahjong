@@ -167,6 +167,29 @@ socket.on('diff-data', (data) => {
         });
         meldTiles[p1].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
     }
+    else if(data.action == 'kan'){
+        console.log(data);
+        var meld_info = data.melds;
+        var tile_info = data.tile;
+        var p = data.player;  // 槓した人
+        // 槓した人の手牌から必要なものを取り除く
+        meld_info.hands.forEach((_id, idx) => {
+                if (handTiles[p].indexOf(_id) != -1){
+                    handTiles[p] = handTiles[p].filter(item => item != _id)
+                    handTiles[p].sort((a, b) => a - b);
+                }
+                else if (p != 0){
+                    var rand = Math.floor(Math.random() * handTiles[p].length);
+                    handTiles[p].splice(rand, 1);
+                }
+        });
+        handTiles[p].push(tile_info);
+        meldTiles[p].push({'tgt_p': p, 'discard': null, 'melds': meld_info.hands});
+    }
+    else if (data.action == 'dora'){
+        doraTiles.push(data.tile);
+        renderDoraTiles(doraEl, doraTiles, "60px");
+    }
 
     // 牌を描画する
     for(var i = 0; i < 4; i++){
@@ -184,6 +207,27 @@ socket.on('select-meld-cand', (data) => {
         socket.emit('select-meld-cand', data[1]);
     }
 });
+
+
+socket.on('select-kan-cand', (data) => {
+    if (data.length == 1)
+        socket.emit('declare-kan', data[0]);
+    else{
+        console.log("declare-kan", data);
+        socket.emit('declare-kan', data[1]);
+    }
+});
+
+
+socket.on('select-riichi-cand', (data) => {
+    if (data.length == 1)
+        socket.emit('declare-riichi', data[0]);
+    else{
+        console.log("declare-riichi", data);
+        socket.emit('declare-riichi', data[1]);
+    }
+});
+
 
 
 socket.on('game-status', (data) => {

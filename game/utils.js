@@ -136,6 +136,7 @@ exports.canRiichi = function(hands, melds){
         const xiangting_num = Majiang.Util.xiangting(convert2Majiang(subhands, melds, null))
         if (xiangting_num == 0) ret.push(hands[i]);
     }
+    console.log(ret);
     return ret;
 }
 

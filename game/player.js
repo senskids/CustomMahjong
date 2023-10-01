@@ -59,7 +59,7 @@ class Player{
         // ツモあがり可能かチェック
         if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
-        if (this.is_menzen && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
+        if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
         if (utils.canAnkan(this.hands).length > 0) this.enable_actions.kan = true;
         // 加槓できるかチェック
@@ -71,6 +71,7 @@ class Player{
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         // 初期状態として何もしてはいけないをセット
         this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, skip: false};
+        if (this.is_riichi) field_info.hupai.riichi = 1;
         // 自分が捨てた場合はreturn
         if (seat_relation == 0) return;     
         // 上家が捨てた場合のみ、チー出来るか判定
@@ -138,7 +139,7 @@ class Player{
     // 立直を実行する  FIXME 1000点出すのはどこでする？
     performRiichi(discard_tile){
         this.is_riichi = true;
-        return this.discardTile(discard_tile);
+        return;
     }
 
     /////////////////////////////////////////////
@@ -234,11 +235,18 @@ class Player{
                     setTimeout(this.saySkip.bind(this), 300);
                 }
             }
+            else if (data['action'] == 'draw'){
+                if (data['enable_actions']["discard"]){
+                    setTimeout(this.sayDiscard.bind(this), 500);
+                }
+            }
         }
     }
     saySkip(){
-        console.log("saySkip");
         this.game_manager.declareAction(this.seat, "skip");
+    }
+    sayDiscard(){
+        this.game_manager.discardTile(this.seat, this.hands[0]);
     }
 }
 

@@ -28,7 +28,7 @@
 8. Local ```git pull origin develop```
 9. Local ```git checkout feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
 10. Local ```git rebase develop
-11. Local ```git push origin feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
+11. Local ```git push origin feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```  無理な場合は-f
 12. Github feature/#(ISSUE番号)/(ISSUEの簡潔な内容) => developへのPull requestを作成
 13. Github チェック後、マージ、originのfeature/#(ISSUE番号)/(ISSUEの簡潔な内容)ブランチを削除
 14. Github ISSUEをクローズする

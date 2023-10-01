@@ -129,9 +129,12 @@ class Player{
         this.hands = this.hands.filter(e => e != hand_tile);
         for (var i = 0; i < this.melds.length; i++){
             let meld = this.melds[i];
-            if (meld.type == 'pon' && utils.id2tile[meld.from_discard].slice(0, 2) == utils.id2tile[hand_tile].slice(0, 2)){
+            var t1 = utils.id2tile[meld.from_discard];
+            var t2 = utils.id2tile[hand_tile];
+            // FIXME m0とm5を=にする
+            if (meld.type == 'pon' && (t1 == t2)){
                 this.melds[i].type = 'kakan';
-                this.melds[i].hands.concat(hand_tile);
+                this.melds[i].from_hands.concat(hand_tile);
             }
         }
     }

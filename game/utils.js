@@ -18,7 +18,7 @@ id2tile[4 * 4 + 0] = 'm0';
 id2tile[4 * 13 + 0] = 'p0';
 id2tile[4 * 13 + 1] = 'p0';
 id2tile[4 * 22 + 0] = 's0';
-exports.id2tile;
+exports.id2tile = id2tile;
 
 exports.canChi = function(hands, discard){
     const tiles = hands.map((v,_) => id2tile[v]);

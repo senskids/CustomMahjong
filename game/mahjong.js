@@ -326,12 +326,14 @@ class Mahjong {
         // 明槓などで新ドラをオープンする
         if(this.is_open_next_dora){
             // ドラの情報を送る
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                action: 'dora',  
-                player: null, 
-                tile: this.dora[this.dora.length - 1], 
-            });
+            for (var i = 0; i < 4; i++){
+                this.players[i].sendMsg('diff-data', {
+                    enable_actions: this.players[i].getEnableActions(), 
+                    action: 'dora',  
+                    player: null, 
+                    tile: this.dora[this.dora.length - 1], 
+                });
+            }
         }
 
         // 他家からのアクションリスト    
@@ -466,8 +468,6 @@ class Mahjong {
             this.dora.push(this.dead_tiles.pop());
             // 明槓なので捨てた後にドラを表示する
             this.is_open_next_dora = true;
-            // 明槓なので捨てた後にドラを表示する
-            this.is_open_next_dora = true;
             // カンした人に嶺上牌をひかせる
             this.players[p].drawTile(replacement_tile, true);
             // 全プレイヤーに情報を送る
@@ -549,7 +549,7 @@ class Mahjong {
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'kan',  // FIXME 
+                action: 'ankan',  
                 melds: {"tgt_p":null, "hands":[...hands]}, 
                 tile:  (this.cplayer_idx == i)? replacement_tile: this.secret_id, 
             });
@@ -574,18 +574,39 @@ class Mahjong {
             return;
         }
         var ret = utils.canKakan(player.getHands(), player.getMelds());
-        if (ret.includes(hand)){
+        if (!ret.includes(hand)){
             console.log("[ERROR B] illigal action");
             return;
         }
         player.performKakan(hand);
+        // 四槓子、流局チェック　// FIXME
+        // 王牌から1枚ドローする
+        let replacement_tile = this.dead_tiles.pop();
+        // 山牌から王牌に1枚追加する
+        this.dead_tiles.push(this.tiles.pop());
+        // ドラ追加
+        this.dora.push(this.dead_tiles.pop());
+        // 明槓なので捨てた後にドラを表示する
+        this.is_open_next_dora = true;
+        // カンした人に嶺上牌をひかせる
+        this.players[p].drawTile(replacement_tile, true);
+        this.players[p].checkEnableActionsForDrawTile(replacement_tile, false, this.getFieldInfo());
+        // 槍槓判定を入れる
+        // 全プレイヤーに情報を送る
+        var tmp = player.getMelds();
+        tmp = tmp[tmp.length - 1];
+        console.log(tmp);
+        var meld_info = {"tgt_p": tmp.from_who, "discard": tmp.from_discard, "hands": [hand]};
+        for(var i = 0; i < 4; i++){
+            this.players[i].sendMsg('diff-data', {
+                enable_actions: this.players[i].getEnableActions(), 
+                player: (p - i + 4) % 4,  // player iから見てどこか 
+                action: 'kakan',  
+                melds: meld_info, 
+                tile:  (this.cplayer_idx == i)? replacement_tile: this.secret_id, 
+            });
+        }      
     }
-
-
-
-
-
-
 
 
     performRiichi(socket_id, discard_tile){

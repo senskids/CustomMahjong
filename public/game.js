@@ -167,11 +167,11 @@ socket.on('diff-data', (data) => {
         });
         meldTiles[p1].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
     }
-    else if(data.action == 'kan'){
+    else if(data.action == 'ankan' || data.action == 'kakan'){
         console.log(data);
+        var p = data.player;  // 鳴いた人
         var meld_info = data.melds;
         var tile_info = data.tile;
-        var p = data.player;  // 槓した人
         // 槓した人の手牌から必要なものを取り除く
         meld_info.hands.forEach((_id, idx) => {
                 if (handTiles[p].indexOf(_id) != -1){
@@ -184,7 +184,10 @@ socket.on('diff-data', (data) => {
                 }
         });
         handTiles[p].push(tile_info);
-        meldTiles[p].push({'tgt_p': p, 'discard': null, 'melds': meld_info.hands});
+        if (data.action == 'ankan')
+            meldTiles[p].push({'tgt_p': null, 'discard': null, 'melds': meld_info.hands});
+        else // FIXME 既にあるmeldsから探してそこに追加する
+            meldTiles[p].push({'tgt_p': meld_info.tgt_p, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
     }
     else if (data.action == 'dora'){
         doraTiles.push(data.tile);

@@ -201,6 +201,7 @@ class Mahjong {
     /* 終了処理 */
     endGame(){
         // 順位
+        const points = Array.from({ length: 4 }, (_, i) => this.players[i].getPoint());
         var ret = points.map((p, i) => [i + 1, p]);
         ret.sort((a, b) => b[1] - a[1]);
         console.log("result", ret);        
@@ -641,15 +642,14 @@ class Mahjong {
         console.log("Tsumo!!!");
         let p = this.whoAction(socket_id);  
         let player = this.players[p];
-        console.log("a", player.enable_actions);
         if (!(player.enable_actions.tsumo)){
             console.log("[ERROR A] illigal action");
             return;
         }
-        // 点数を取得する
-
+        // 点数を取得する  FIXME
+        
         // 次のゲームに進む
-        this.timeout_id = setTimeout(this.forwardGame.bind(this), 5000, [p], false);
+        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [p], false);
     }
 
     performRon(ron_players, roned_player, roned_tile){
@@ -658,17 +658,17 @@ class Mahjong {
         for (var i = 0; i < ron_players.length; i++){
             let ron_player = ron_players.player;
             winPlayer.push(ron_player);
-            // 点数を取得する
+            // 点数を取得する  FIXME
 
         }
 
         // 次のゲームに進む
-        this.timeout_id = setTimeout(this.forwardGame.bind(this), 5000, winPlayer, false);
+        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, winPlayer, false);
     }
 
     drawnGame(is_special = false){
         console.log("流局");
-        this.timeout_id = setTimeout(this.forwardGame.bind(this), 5000, [], false);
+        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [], false);
     }
 
     getFieldInfo = function(){

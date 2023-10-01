@@ -152,6 +152,9 @@ class Player{
     setSeat(seat_id){
         this.seat = seat_id;
     }
+    getPoint(){
+        return this.point;
+    }
     getHands(){
         return this.hands;
     };

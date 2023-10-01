@@ -1,5 +1,6 @@
 const utils = require('./utils');
 const Player = require('./player');
+const debug = require('../debug');
 
 class Mahjong {
     constructor(socket) {
@@ -200,6 +201,7 @@ class Mahjong {
     /* 終了処理 */
     endGame(){
         // 順位
+        const points = Array.from({ length: 4 }, (_, i) => this.players[i].getPoint());
         var ret = points.map((p, i) => [i + 1, p]);
         ret.sort((a, b) => b[1] - a[1]);
         console.log("result", ret);        
@@ -217,7 +219,9 @@ class Mahjong {
         
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
-        // utils.shuffleArray(this.tiles);
+        utils.shuffleArray(this.tiles);
+        // this.tiles = debug.createTenhoTiles();
+        console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
             this.players[p].setInitialTiles(this.tiles.slice(0, 13));  // 頭13個をpush
@@ -380,6 +384,10 @@ class Mahjong {
                 ret = utils.canRiichi(player.getHands(), player.getMelds());
                 player.sendMsg('select-riichi-cand', ret);
             }
+            else if (action_type == 'tsumo'){
+                if (utils.canTsumo(player.getHands(), player.getMelds(), player.getHands()[player.getHands().length - 1], this.getFieldInfo()))
+                    this.performTsumo(socket_id);
+            }
             return;
         }
 
@@ -476,7 +484,6 @@ class Mahjong {
             tmp = tmp[tmp.length - 1];
             var meld_info = {"tgt_p": tmp.from_who, "discard": tmp.from_discard, "hands": [...tmp.from_hands]};
             for(var i = 0; i < 4; i++){
-                this.players[i].enable_actions = {discard: i == p, pon: false, chi: false, ron: false, riichi: false, kan: false};
                 this.players[i].sendMsg('diff-data', {
                     enable_actions: this.players[i].getEnableActions(), 
                     player: (p - i + 4) % 4,  // player iから見てどこか 
@@ -510,19 +517,13 @@ class Mahjong {
     }
 
     moveNext(){
+        if (this.tiles.length == 0){
+            this.drawnGame();
+            return;
+        }
         this.cplayer_idx = (this.cplayer_idx + 1) % this.players.length;
         this.drawTile();        
     }
-
-
-    performRon(ron_players, roned_player, roned_tile){
-        console.log("Ron!!!");
-        for (var i = 0; i < ron_players.length; i++){
-            let ron_player = ron_players.player;
-        }
-    }
-
-
 
     performAnkan(socket_id, hands){
         let p = this.whoAction(socket_id);  
@@ -604,6 +605,7 @@ class Mahjong {
         var meld_info = {"tgt_p": tmp.from_who, "discard": tmp.from_discard, "hands": [hand]};
         for(var i = 0; i < 4; i++){
             this.players[i].sendMsg('diff-data', {
+                // 槍槓チェック
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
                 action: 'kakan',  
@@ -635,14 +637,38 @@ class Mahjong {
 
         this.discardTile(socket_id, discard_tile);
     }
+
     performTsumo(socket_id){
+        console.log("Tsumo!!!");
         let p = this.whoAction(socket_id);  
         let player = this.players[p];
         if (!(player.enable_actions.tsumo)){
             console.log("[ERROR A] illigal action");
             return;
         }
-        // performRon
+        // 点数を取得する  FIXME
+        
+        // 次のゲームに進む
+        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [p], false);
+    }
+
+    performRon(ron_players, roned_player, roned_tile){
+        console.log("Ron!!!");
+        let winPlayer = [];
+        for (var i = 0; i < ron_players.length; i++){
+            let ron_player = ron_players.player;
+            winPlayer.push(ron_player);
+            // 点数を取得する  FIXME
+
+        }
+
+        // 次のゲームに進む
+        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, winPlayer, false);
+    }
+
+    drawnGame(is_special = false){
+        console.log("流局");
+        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [], false);
     }
 
     getFieldInfo = function(){

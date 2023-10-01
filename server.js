@@ -93,12 +93,16 @@ io.on('connection', (socket) => {
 
     // プレイヤーが加槓、暗槓を宣言したときの処理
     socket.on('declare-kan', (hands) => {
-        game.declareKan(socket.id, hands);
+        if (hands.length == 4)
+            game.performAnkan(socket.id, hands);
+        else
+            game.performKakan(socket.id, hands);
     });
 
     // プレイヤーが立直を宣言したときの処理
-    socket.on('declare-riichi', () => {
-        game.declareRiichi(socket.id, discard_tile);
+    socket.on('declare-riichi', (discardTile) => {
+        console.log("[declare-riichi]");
+        game.performRiichi(socket.id, discardTile);
     });
     
     // プレイヤーがツモあがりを宣言したときの処理

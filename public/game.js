@@ -167,6 +167,38 @@ socket.on('diff-data', (data) => {
         });
         meldTiles[p1].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
     }
+    else if(data.action == 'ankan' || data.action == 'kakan' || data.action == 'kan'){
+        console.log(data);
+        var p = data.player;  // 鳴いた人
+        var meld_info = data.melds;
+        var tile_info = data.tile;
+        var p2 = (data.action == 'ankan')? null: (p + meld_info.tgt_p + 4) % 4; 
+        if (data.action == 'kan')
+            discardTiles[p2].pop();
+        // 槓した人の手牌から必要なものを取り除く
+        meld_info.hands.forEach((_id, idx) => {
+                if (handTiles[p].indexOf(_id) != -1){
+                    handTiles[p] = handTiles[p].filter(item => item != _id)
+                    handTiles[p].sort((a, b) => a - b);
+                }
+                else if (p != 0){
+                    var rand = Math.floor(Math.random() * handTiles[p].length);
+                    handTiles[p].splice(rand, 1);
+                }
+        });
+        handTiles[p].push(tile_info);
+        if (data.action == 'ankan')
+            meldTiles[p].push({'tgt_p': null, 'discard': null, 'melds': meld_info.hands});
+        else if (data.action == 'kakan')// FIXME 既にあるmeldsから探してそこに追加する
+            meldTiles[p].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
+        else{
+            meldTiles[p].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
+        }
+    }
+    else if (data.action == 'dora'){
+        doraTiles.push(data.tile);
+        renderDoraTiles(doraEl, doraTiles, "60px");
+    }
 
     // 牌を描画する
     for(var i = 0; i < 4; i++){
@@ -184,6 +216,27 @@ socket.on('select-meld-cand', (data) => {
         socket.emit('select-meld-cand', data[1]);
     }
 });
+
+
+socket.on('select-kan-cand', (data) => {
+    if (data.length == 1)
+        socket.emit('declare-kan', data[0]);
+    else{
+        console.log("declare-kan", data);
+        socket.emit('declare-kan', data[1]);
+    }
+});
+
+
+socket.on('select-riichi-cand', (data) => {
+    if (data.length == 1)
+        socket.emit('declare-riichi', data[0]);
+    else{
+        console.log("declare-riichi", data);
+        socket.emit('declare-riichi', data[1]);
+    }
+});
+
 
 
 socket.on('game-status', (data) => {

@@ -54,13 +54,12 @@ class Player{
     
     // 自分がtileをツモした際に、何のアクションができるかチェックする
     checkEnableActionsForDrawTile(tile, is_replacement = false, field_info = null){
-        this.enable_actions = {discard: true, pon: false, chi: false, ron: false, riichi: false, kan: false, skip: false};
         // 捨てることは絶対できる
-        this.enable_actions.discard = true;
+        this.enable_actions = {discard: true, pon: false, chi: false, ron: false, riichi: false, kan: false, skip: false};
         // ツモあがり可能かチェック
         if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
-        if (this.is_menzen) if (utils.canRiichi(this.hands, this.melds, tile).length > 0) this.enable_actions.riichi = true;
+        if (this.is_menzen && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
         if (utils.canAnkan(this.hands).length > 0) this.enable_actions.kan = true;
         // 加槓できるかチェック
@@ -81,7 +80,7 @@ class Player{
         // カン出来るか判定
         if (utils.canKan(this.hands, tile).length > 0) this.enable_actions.kan = true;
         // ロン出来るか判定
-        if (utils.canRon(this.hands, this.melds, seat_relation, tile, field_info) > 0) this.enable_actions.ron = true;
+        if (utils.canRon(this.hands, this.melds, tile, seat_relation, field_info) > 0) this.enable_actions.ron = true;
         // 何かアクションを起こせるなら、スキップも押せるようにする  FIXME
         this.enable_actions.skip = this.canAnyAction();
     }
@@ -93,21 +92,18 @@ class Player{
         console.log("[checkEnableActionsForKakanTile] not implemented");
     }
 
-
-
-
     /// 他家の捨牌から鳴きを実行する
     // meld_type : 'pon', 'kan', 'chi'のいずれか
-    // from_who : 鳴かれた人のシートのid
+    // seat_id : 鳴かれた人のシートのid
     // hand_tiles: 手牌から抜き出す牌（idのリスト）
     // discard_Tile: 河から拾って来る牌のid
-    performMeld(meld_type, from_who, hand_tiles, discard_tile){
+    performMeld(meld_type, seat_id, hand_tiles, discard_tile){
         this.hands = this.hands.filter(e => !hand_tiles.includes(e));
         let meld_info = {
             type: meld_type, 
             from_hands: [...hand_tiles], 
             from_discard: discard_tile, 
-            from_who: this.getSeatRelationFromSeatId(from_who)  // このプレイヤーから見て1:下家、2:対面、3:上家
+            from_who: this.getSeatRelationFromSeatId(seat_id)  // このプレイヤーから見て1:下家、2:対面、3:上家
         };
         this.is_menzen = false;
         this.melds.push(meld_info);
@@ -148,8 +144,8 @@ class Player{
     /////////////////////////////////////////////
     //////////// ゲッター・セッター /////////////
     /////////////////////////////////////////////
-    setSeat(pos){
-        this.seat = pos;
+    setSeat(seat_id){
+        this.seat = seat_id;
     }
     getHands(){
         return this.hands;
@@ -190,6 +186,10 @@ class Player{
     getEnableActions(){
         return this.enable_actions;
     }
+
+    /////////////////////////////////////////////
+    /////////////////// Utils ///////////////////
+    /////////////////////////////////////////////
     canAnyAction(){
         if (this.enable_actions.chi) return true;
         if (this.enable_actions.pon) return true;
@@ -226,6 +226,19 @@ class Player{
     /////////////////////////////////////////////
     RandomAi(event, data){
         // 行動できるアクションからランダムで選ぶ
+        console.log("[RandomAi] not implemented");
+
+        if (event === 'diff-data'){
+            if (data['action'] == 'discard'){
+                if (data['enable_actions']["skip"]) {
+                    setTimeout(this.saySkip.bind(this), 300);
+                }
+            }
+        }
+    }
+    saySkip(){
+        console.log("saySkip");
+        this.game_manager.declareAction(this.seat, "skip");
     }
 }
 

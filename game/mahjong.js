@@ -325,6 +325,7 @@ class Mahjong {
 
         // 明槓などで新ドラをオープンする
         if(this.is_open_next_dora){
+            this.is_open_next_dora = false;
             // ドラの情報を送る
             for (var i = 0; i < 4; i++){
                 this.players[i].sendMsg('diff-data', {
@@ -471,13 +472,17 @@ class Mahjong {
             // カンした人に嶺上牌をひかせる
             this.players[p].drawTile(replacement_tile, true);
             // 全プレイヤーに情報を送る
+            var tmp = this.players[p].getMelds();
+            tmp = tmp[tmp.length - 1];
+            var meld_info = {"tgt_p": tmp.from_who, "discard": tmp.from_discard, "hands": [...tmp.from_hands]};
             for(var i = 0; i < 4; i++){
                 this.players[i].enable_actions = {discard: i == p, pon: false, chi: false, ron: false, riichi: false, kan: false};
                 this.players[i].sendMsg('diff-data', {
                     enable_actions: this.players[i].getEnableActions(), 
                     player: (p - i + 4) % 4,  // player iから見てどこか 
                     action: 'kan', 
-                    tile: this.meld_info, 
+                    melds: meld_info, 
+                    tile:  (p == i)? replacement_tile: this.secret_id, 
                 });
             }      
         }
@@ -551,7 +556,7 @@ class Mahjong {
                 player: (p - i + 4) % 4,  // player iから見てどこか 
                 action: 'ankan',  
                 melds: {"tgt_p":null, "hands":[...hands]}, 
-                tile:  (this.cplayer_idx == i)? replacement_tile: this.secret_id, 
+                tile:  (p == i)? replacement_tile: this.secret_id, 
             });
         }      
 

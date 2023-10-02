@@ -229,6 +229,7 @@ class Mahjong {
         }
         // 王牌
         this.dead_tiles = this.tiles.slice(0, 13);
+        this.tiles = this.tiles.slice(13);
         // ドラ表示
         this.dora = [this.tiles.pop()];
 
@@ -280,6 +281,7 @@ class Mahjong {
                 player: (this.cplayer_idx - i + 4) % 4,  // player iから見てどこか 
                 action: 'draw', 
                 tile: (this.cplayer_idx == i)? draw_tile: this.secret_id, 
+                remain_tile_num: this.tiles.length,
             });
         }        
     }
@@ -490,6 +492,7 @@ class Mahjong {
                     action: 'kan', 
                     melds: meld_info, 
                     tile:  (p == i)? replacement_tile: this.secret_id, 
+                    remain_tile_num: this.tiles.length,
                 });
             }      
         }
@@ -558,6 +561,7 @@ class Mahjong {
                 action: 'ankan',  
                 melds: {"tgt_p":null, "hands":[...hands]}, 
                 tile:  (p == i)? replacement_tile: this.secret_id, 
+                remain_tile_num: this.tiles.length,
             });
         }      
 
@@ -611,6 +615,7 @@ class Mahjong {
                 action: 'kakan',  
                 melds: meld_info, 
                 tile:  (this.cplayer_idx == i)? replacement_tile: this.secret_id, 
+                remain_tile_num: this.tiles.length,
             });
         }      
     }

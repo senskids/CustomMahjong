@@ -33,6 +33,9 @@ const meldEls = idx2player_map.map(p => document.getElementById(`${p}-meld-tiles
 const doraEl = document.getElementById('dora-tiles');
 const wallEl = document.querySelector('wall-tiles');
 
+const tileNum = document.getElementById('tiles-num');
+let currentTilesNum = 136;
+
 // Socket.IOのインスタンスを作成
 const socket = io();
 
@@ -132,6 +135,7 @@ socket.on('diff-data', (data) => {
     update_actions(data.enable_actions);
     if (data.action == 'draw'){
         handTiles[data.player].push(data.tile);
+        currentTilesNum = data.remain_tile_num;
     }
     else if(data.action == 'discard'){
         if (handTiles[data.player].indexOf(data.tile) != -1){
@@ -194,6 +198,7 @@ socket.on('diff-data', (data) => {
         else{
             meldTiles[p].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
         }
+        currentTilesNum = data.remain_tile_num;
     }
     else if (data.action == 'dora'){
         doraTiles.push(data.tile);
@@ -206,6 +211,9 @@ socket.on('diff-data', (data) => {
         renderTiles(discardEls[i], discardTiles[i], "60px");
         renderMeldTiles(meldEls[i], meldTiles[i], "60px");
     }
+
+    // 残り牌数を更新する
+    tileNum.textContent = currentTilesNum;
 });
 
 socket.on('select-meld-cand', (data) => {

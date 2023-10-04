@@ -36,6 +36,11 @@ const wallEl = document.querySelector('wall-tiles');
 const tileNum = document.getElementById('tiles-num');
 let currentTilesNum = 136;
 
+// 牌を引いたかを判定するフラグ
+let is_Draw = false;
+// 牌を描画するかどうかを判定するフラグ
+let is_Render = false;
+
 // Socket.IOのインスタンスを作成
 const socket = io();
 
@@ -60,7 +65,7 @@ let meldTiles = [[], [], [], []];
 let doraTiles = [];
 // let wallTiles = [];
 
-renderTiles = function(el, tiles, img_width, is_listener = false){
+renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
@@ -71,6 +76,15 @@ renderTiles = function(el, tiles, img_width, is_listener = false){
             tileEl.addEventListener('click', () => {
                 socket.emit('discard-tile', tile);
             })
+        }
+        // 最後の牌には新たなクラスを付与する。自分の牌と他の人の牌でスペースの空き方を変える
+        if ((idx == tiles.length - 1) && is_current && is_draw) {
+            if(is_listener){
+                tileEl.classList.add('last-my-tile');
+            }
+            else {
+                tileEl.classList.add('last-other-tile');
+            }
         }
         el.appendChild(tileEl);
     });
@@ -133,9 +147,12 @@ socket.on('data', (data) => {
 socket.on('diff-data', (data) => {
     // ゲームの状態を更新する
     update_actions(data.enable_actions);
+    // ドラ表示を除いて牌を描画する
+    is_Render = true;
     if (data.action == 'draw'){
         handTiles[data.player].push(data.tile);
         currentTilesNum = data.remain_tile_num;
+        is_Draw = true;
     }
     else if(data.action == 'discard'){
         if (handTiles[data.player].indexOf(data.tile) != -1){
@@ -149,6 +166,7 @@ socket.on('diff-data', (data) => {
         else 
             console.log("[ERROR C]");
         discardTiles[data.player].push(data.tile);
+        is_Draw = false;
     }
     else if(data.action == 'meld'){
         console.log(data);
@@ -199,17 +217,21 @@ socket.on('diff-data', (data) => {
             meldTiles[p].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
         }
         currentTilesNum = data.remain_tile_num;
+        is_Draw = true;
     }
     else if (data.action == 'dora'){
         doraTiles.push(data.tile);
         renderDoraTiles(doraEl, doraTiles, "60px");
+        is_Render = false;
     }
 
-    // 牌を描画する
-    for(var i = 0; i < 4; i++){
-        renderTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false);
-        renderTiles(discardEls[i], discardTiles[i], "60px");
-        renderMeldTiles(meldEls[i], meldTiles[i], "60px");
+    if (is_Render){
+        // 牌を描画する
+        for(var i = 0; i < 4; i++){
+            renderTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false, (i == data.player)? true: false, is_Draw);
+            renderTiles(discardEls[i], discardTiles[i], "60px");
+            renderMeldTiles(meldEls[i], meldTiles[i], "60px");
+        }
     }
 
     // 残り牌数を更新する

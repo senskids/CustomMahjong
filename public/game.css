@@ -235,8 +235,12 @@
       inset 2px 2px 3px rgba(0, 0, 0, 0.6);
   }
 
-  .hand-tiles{
-    margin-right: 100px;
+  .last-my-tile{
+    margin-left: 50px;
+  }
+
+  .last-other-tile{
+    margin-left: 20px;
   }
 
   .meld-tiles{

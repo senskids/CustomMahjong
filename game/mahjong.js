@@ -220,7 +220,7 @@ class Mahjong {
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
-        // this.tiles = debug.createTenhoTiles();
+        this.tiles = debug.createTenhoTiles();
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){

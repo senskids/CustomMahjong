@@ -146,7 +146,8 @@ socket.on('data', (data) => {
 // WebSocketでサーバからのデータを受信する処理
 socket.on('diff-data', (data) => {
     // ゲームの状態を更新する
-    update_actions(data.enable_actions);
+    if ("enable_actions" in data)
+        update_actions(data.enable_actions);
     // ドラ表示を除いて牌を描画する
     is_Render = true;
     if (data.action == 'draw'){
@@ -168,10 +169,10 @@ socket.on('diff-data', (data) => {
         discardTiles[data.player].push(data.tile);
         is_Draw = false;
     }
-    else if(data.action == 'meld'){
+    else if(data.action == 'pon' || data.action == 'chi' || data.action == 'kan'){
         console.log(data);
         // var meld_info = {tgt_p: person, dicard: tile, hands: []};
-        var meld_info = data.tile;
+        var meld_info = data.meld;
         var p1 = data.player;  // 鳴いた人
         var p2 = (p1 + meld_info.tgt_p + 4) % 4;  // 鳴かれた人  tgt_p : 1 => data.playerからみて下家
         // 鳴かれた人の捨牌から最新のものを取り除く
@@ -189,14 +190,10 @@ socket.on('diff-data', (data) => {
         });
         meldTiles[p1].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
     }
-    else if(data.action == 'ankan' || data.action == 'kakan' || data.action == 'kan'){
+    else if(data.action == 'ankan' || data.action == 'kakan'){
         console.log(data);
         var p = data.player;  // 鳴いた人
-        var meld_info = data.melds;
-        var tile_info = data.tile;
-        var p2 = (data.action == 'ankan')? null: (p + meld_info.tgt_p + 4) % 4; 
-        if (data.action == 'kan')
-            discardTiles[p2].pop();
+        var meld_info = data.meld;
         // 槓した人の手牌から必要なものを取り除く
         meld_info.hands.forEach((_id, idx) => {
                 if (handTiles[p].indexOf(_id) != -1){
@@ -207,16 +204,21 @@ socket.on('diff-data', (data) => {
                     var rand = Math.floor(Math.random() * handTiles[p].length);
                     handTiles[p].splice(rand, 1);
                 }
-        });
-        handTiles[p].push(tile_info);
-        if (data.action == 'ankan')
+        });        
+        if (data.action == 'ankan') {
             meldTiles[p].push({'tgt_p': null, 'discard': null, 'melds': meld_info.hands});
-        else if (data.action == 'kakan')// FIXME 既にあるmeldsから探してそこに追加する
-            meldTiles[p].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
-        else{
-            meldTiles[p].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
         }
+        else if (data.action == 'kakan'){ // FIXME 既にあるmeldsから探してそこに追加する
+            for(var t = 0; t < meldTiles[p].length; t++){
+                if (parseInt(meld_info.hands[0] / 4) == parseInt(meldTiles[p][t].discard / 4))
+                    meldTiles[p][t].melds.push(meld_info.hands[0]);
+            }
+        }
+    }
+    else if (data.action == 'replacement-draw'){
+        let p = data.player;
         currentTilesNum = data.remain_tile_num;
+        handTiles[p].push(data.tile);
         is_Draw = true;
     }
     else if (data.action == 'dora'){

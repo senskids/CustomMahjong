@@ -254,7 +254,7 @@ class Mahjong {
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
-        // this.tiles = debug.createTenhoTiles();
+        this.tiles = debug.createTenhoTiles();
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
@@ -387,9 +387,9 @@ class Mahjong {
             // ドラの情報を送る
             for (var i = 0; i < 4; i++){
                 this.players[i].sendMsg('diff-data', {
-                    enable_actions: this.players[i].getEnableActions(), 
+                    // enable_actions: this.players[i].getEnableActions(), 
                     action: 'dora',  
-                    player: null, 
+                    // player: null, 
                     tile: this.dora[this.dora.length - 1], 
                 });
             }
@@ -496,7 +496,7 @@ class Mahjong {
                 if (this.next_process_info["func"] == "moveNext")
                     this.timeout_id = setTimeout(this.moveNext.bind(this), 10);
                 else 
-                    this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10);
+                    this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, this.next_process_info["opt"]);
             }
             return;
         }
@@ -627,8 +627,8 @@ class Mahjong {
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'meld', 
-                tile: this.meld_info, 
+                action: 'pon', 
+                meld: this.meld_info, 
             });
         }      
     }
@@ -664,8 +664,8 @@ class Mahjong {
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'meld', 
-                tile: this.meld_info, 
+                action: 'chi', 
+                meld: this.meld_info, 
             });
         }      
     }
@@ -700,12 +700,12 @@ class Mahjong {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
                 action: 'kan',
-                melds: {"tgt_p":(this.meld_info.p2 - p + 4) % 4, "hands":[...hands]},   
+                meld: {"tgt_p":(this.meld_info.p2 - p + 4) % 4, "discard": discard, "hands":[...hands]},   
                 // tile:  (p == i)? replacement_tile: this.secret_id, 
             });
         }      
 
-        this.kan_type = "kan";
+        this.next_process_info = {"func": "drawReplacementTile", "opt": "kan"};
         this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10);        
     }
 
@@ -745,7 +745,7 @@ class Mahjong {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
                 action: 'ankan',  
-                melds: {"tgt_p":null, "hands":[...hands]}, 
+                meld: {"tgt_p":null, "hands":[...hands]}, 
                 // tile:  (p == i)? replacement_tile: this.secret_id, 
             });
         }      
@@ -775,7 +775,7 @@ class Mahjong {
         }
         // 槍槓出来るプレイヤーがいないなら嶺上ツモにうつる
         else{
-            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10);
+            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, "ankan");
         }
     }
 
@@ -812,7 +812,7 @@ class Mahjong {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
                 action: 'kakan',
-                melds: {"tgt_p":null, "hands":[hand]},   
+                meld: {"tgt_p":null, "hands":[hand]},   
                 // tile:  (p == i)? replacement_tile: this.secret_id, 
             });
         }      
@@ -837,22 +837,20 @@ class Mahjong {
             }
             waiting_time = waiting_time + 100;  // 安全マージンの追加
             // FIXME : プレイヤーに送信する処理
-            this.next_function = "drawReplacementTile";
-            this.kan_type = "kakan";
+            this.next_process_info = {"func": "drawReplacementTile", "opt": "kakan"};
             this.timeout_id = setTimeout(this.selectDeclaredAction.bind(this), waiting_time);
         }
         // 槍槓出来るプレイヤーがいないなら嶺上ツモにうつる
         else{
-            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), waiting_time);
+            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, "kakan");
         }
     }
 
 
     /**
      * 嶺上ツモを実行する  
-     * performKan, Ankan, Kakanの際に、this.kan_typeを更新している  
      */
-    drawReplacementTile(){
+    drawReplacementTile(kan_type){
         // 槍槓ロンを無効にする
         this.can_declare_action = false; 
 
@@ -864,8 +862,6 @@ class Mahjong {
         }
 
         let p = this.cplayer_idx; 
-        let kan_type = this.next_process_info["opt"];
-        // this.next_process_info = { "func": null, "opt": null };
 
         // 王牌から1枚ドローする
         let replacement_tile = this.dead_tiles.pop();
@@ -886,12 +882,23 @@ class Mahjong {
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: kan_type,  
-                // melds: meld_info, 
+                action: 'replacement-draw',  
                 tile:  (this.cplayer_idx == i)? replacement_tile: this.secret_id, 
                 remain_tile_num: this.tiles.length, 
             });
-        }      
+        }    
+        
+        if (kan_type == 'ankan'){
+            for(var i = 0; i < 4; i++){
+                this.players[i].sendMsg('diff-data', {
+                    action: 'dora',  
+                    tile: this.dora[this.dora.length - 1], 
+                });
+            }    
+        }
+        else{
+            this.is_open_next_dora = true;
+        }
     }  
 
 

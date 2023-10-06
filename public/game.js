@@ -91,12 +91,17 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
 }
 renderMeldTiles = function(el, tiles, img_width){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
+    const p2 = tiles[0].tgt_p; // ポンされた人
     tiles.forEach((arr, _) => {
         arr.melds.forEach((tile, idx) => {
             const tileEl = document.createElement('img');
             tileEl.classList.add('hand-tile');
             tileEl.src = key2fname_map[tile];
             tileEl.style = "width: " + img_width + ";";
+            // ポンされた人側の牌だけ90度傾ける
+            if((3-p2) == idx){
+                tileEl.style = "transform:rotate(90deg);";
+            }
             el.appendChild(tileEl);
         });
     });
@@ -130,6 +135,7 @@ socket.on('data', (data) => {
         if (melds[i].code == 'full')
             meldTiles[i] = melds[i].value;
     }
+
     // ドラ
     doraTiles = data.doraTiles.value;
 

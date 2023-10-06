@@ -84,7 +84,7 @@ io.on('connection', (socket) => {
 
     // プレイヤーが鳴きを行ったときの処理
     socket.on('declare-action', (action_type) => {
-        game.declareAction(socket.id, action_type);
+        game.notTurnPlayerDeclareAction(socket.id, action_type);
     });
 
     socket.on('select-meld-cand', (hands) => {

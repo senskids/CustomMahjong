@@ -1,24 +1,44 @@
 const utils = require('./utils');
 
 class Player{
+
     constructor(game_manager, socket, socket_id, user_id, user_name){
-        this.game_manager = game_manager;  // Mahjongクラスインスタンスへの参照
-        this.is_active = true;             // ユーザが今アクティブかどうか（非アクティブの場合はAIが打つ）
-        this.socket = socket;              // Socket Object
-        this.socket_id = socket_id;        // ユーザとのSocket通信のID
-        this.user_id = user_id;            // ユーザのuser_id（キー）
-        this.user_name = user_name;        // ユーザの名前
-        this.seat = -1;                    // 座席の場所 0:東, 1:南, 2:西, 3:北
-        this.point = 25000;                // 現在の点棒
-        this.hands = [];                   // 手牌
-        this.discards = [];                // 捨牌
-        this.tumogiris = [];               // 捨牌の自摸切りの有無  FIXME  実装していない
-        this.melds = [];                   // 鳴牌
-        this.is_menzen = true;             // 面前かどうか  // 名前check
-        this.is_riichi = false;            // リーチしているか
-        this.is_tenpai = false;            // 聴牌しているか
-        this.allotted_time = -1;           // 持ち時間
-        this.enable_actions = {            // 可能なアクション
+        /** Mahjongクラスインスタンスへの参照 */ 
+        this.game_manager = game_manager;
+        /** ユーザが今アクティブかどうか（非アクティブの場合はAIが打つ）  */
+        this.is_active = true;
+        /** Socket Object */
+        this.socket = socket;
+        /** ユーザとのSocket通信のID */
+        this.socket_id = socket_id;
+        /** ユーザのuser_id（キー） */
+        this.user_id = user_id;
+        /** ユーザの名前 */
+        this.user_name = user_name;
+        /** 座席の場所 0:東, 1:南, 2:西, 3:北 */
+        this.seat = -1;
+        /** 現在の点棒 */
+        this.point = 25000;
+        /** 手牌（タイルID表現） */
+        this.hands = [];
+        /** 捨牌（タイルID表現） */
+        this.discards = [];
+        /** 捨牌の自摸切りの有無  FIXME  実装していない */
+        this.tumogiris = [];
+        /** 鳴牌（鳴き牌表現） */
+        this.melds = [];
+        /** 面前かどうか */
+        this.is_menzen = true;             
+        /** リーチしているか */
+        this.is_riichi = false;
+        /** 聴牌しているか */
+        this.is_tenpai = false;
+        /** 現在、捨ててはいけない牌（タイルID表現） FIXME */
+        this.forbidden_discards = [];
+        /** 持ち時間  FIXME 実装していない */
+        this.allotted_time = 10;
+        /** プレイヤーが現在可能なアクションの辞書 */
+        this.enable_actions = {
             discard: false, 
             pon: false, 
             chi: false, 
@@ -26,11 +46,15 @@ class Player{
             riichi: false, 
             kan: false, 
             tsumo: false, 
-            skip: false,                   // 考える, 九種九牌なども
+            skip: false,      // FIXME 九種九牌なども
         };
     }
 
-    // 配牌する
+
+    /**
+     * 局の開始時に手牌、捨牌、鳴牌を初期化する
+     * @param {Array} tiles  初期手牌 
+     */
     setInitialTiles(tiles){
         this.hands = [...tiles];
         this.melds = [];
@@ -38,25 +62,52 @@ class Player{
         this.sortHands();
     }
 
-    // ツモする
-    drawTile(tile, is_replacement = false){  
+
+    /**
+     * 山牌からツモして手牌に加える
+     * @param {Array} tile  ツモする牌（タイルID表現）
+     */
+    drawTile(tile){ 
         this.hands.push(tile);
     }
 
-    // 手牌から牌を捨てる
+
+    /**
+     * 手牌からtileを捨てる
+     * @param {Array} tile  捨てる牌（タイルID表現）
+     * @returns 正しく捨てられたか否か
+     */
     discardTile(tile){
+        if (this.forbidden_discards.includes(tile)){
+            console.log("[ERROR, discardTile, B] 捨ててはいけない牌を捨てようとした");
+            this.sendMsg('cannot-discard-tile', null);
+            return false;
+        }
         const idx = this.hands.indexOf(tile);
-        if (idx < 0) return "Null";
+        if (idx < 0) {
+            console.log("[ERROR, discardTile, C] 手牌にない牌を捨てようとした");
+            this.sendMsg('cannot-discard-tile', null);
+            return false;
+        }
         this.hands.splice(idx, 1);
         this.sortHands();
         this.discards.push(tile);
-        return tile;
+        return true;
     }    
     
-    // 自分がtileをツモした際に、何のアクションができるかチェックする
-    checkEnableActionsForDrawTile(tile, is_replacement = false, field_info = null){
+
+    /** FIXME field_info
+     * seat_idの人がtileをツモした際に、enable_actionsを更新する
+     * @param {Number} seat_id  ツモした人のシート番号（絶対値 0～4）
+     * @param {Array} tile      ツモした牌（タイルID表現）
+     */
+    checkEnableActionsForDrawTile(seat_id, tile, field_info = null){
+        // 何もできないで初期化
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        // 自分のツモじゃなかったらreturn
+        if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
         // 捨てることは絶対できる
-        this.enable_actions = {discard: true, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.enable_actions.discard = true;
         // ツモあがり可能かチェック
         if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
@@ -67,7 +118,12 @@ class Player{
         if (utils.canKakan(this.hands, this.melds).length > 0) this.enable_actions.kan = true;
     }
 
-    // seat_idの人がtileを捨てた際に、何のアクションができるかチェックする
+
+    /** FIXME field_info, ラスツモなら槓できない等
+     * seat_idの人がtileを捨てた際に、enable_actionsを更新する
+     * @param {Number} seat_id  捨てた人のシート番号（絶対値 0～4）
+     * @param {Array} tile      捨牌（タイルID表現）
+     */
     checkEnableActionsForDiscardTile(seat_id, tile, field_info = null){
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         // 初期状態として何もしてはいけないをセット
@@ -87,18 +143,52 @@ class Player{
         this.enable_actions.skip = this.canAnyAction();
     }
 
-    // seat_idの人がtileを加槓した際に、アクション（槍槓）ができるかチェックする
-    checkEnableActionsForKakanTile(seat_id, tile){
+
+    /** FIXME : Not implemented
+     * seat_idの人がtileを槓（暗槓or加槓）した際に、アクション（槍槓）ができるかチェックする
+     * @param {Number} seat_id    シート番号（絶対値 0～4）
+     * @param {Array} tile        槓した牌（タイルID表現）
+     * @param {Boolean} is_ankan  暗槓かどうか（暗槓の場合、国士無双だけできる）
+     */
+    checkEnableActionsForKan(seat_id, tile, is_ankan){
         this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
         // if (utils.canRon(this.hands, this.melds, seat_relation, tile, field_info) > 0) this.enable_actions.ron = true;
         console.log("[checkEnableActionsForKakanTile] not implemented");
     }
 
-    /// 他家の捨牌から鳴きを実行する
-    // meld_type : 'pon', 'kan', 'chi'のいずれか
-    // seat_id : 鳴かれた人のシートのid
-    // hand_tiles: 手牌から抜き出す牌（idのリスト）
-    // discard_Tile: 河から拾って来る牌のid
+
+    /** FIXME field_info
+     * seat_idの人がtileをツモした際に、enable_actionsを更新する
+     * @param {Number} seat_id    ツモした人のシート番号（絶対値 0～4）
+     * @param {Array} tile        ツモした牌（タイルID表現）
+     * @param {String} kan_type   槓の種類（'kan', 'ankan', 'kakan'）
+     */
+    checkEnableActionsForDrawReplacementTile(seat_id, tile, kan_type, field_info = null){
+        // 何もできないで初期化
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        // 自分のツモじゃなかったらreturn
+        if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
+        // 捨てることは絶対できる
+        this.enable_actions.discard = true;
+        if (kan_type == 'kan') return;  // 捨牌に対する槓なら捨てるだけ
+        // ツモあがり可能かチェック
+        if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
+        // リーチ可能かチェック
+        if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
+        // 暗槓できるかチェック
+        if (utils.canAnkan(this.hands).length > 0) this.enable_actions.kan = true;
+        // 加槓できるかチェック
+        if (utils.canKakan(this.hands, this.melds).length > 0) this.enable_actions.kan = true;
+    }
+
+
+    /** 
+     * 他家の捨牌から鳴きを実行する（handsとmeldsを更新する）  FIXME : 喰い変えも実装する
+     * @param {String} meld_type     'pon', 'kan', 'chi'のいずれか
+     * @param {Number} seat_id       シート番号（絶対値 0～4）
+     * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
+     * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     */
     performMeld(meld_type, seat_id, hand_tiles, discard_tile){
         this.hands = this.hands.filter(e => !hand_tiles.includes(e));
         let meld_info = {
@@ -111,8 +201,44 @@ class Player{
         this.melds.push(meld_info);
     }
 
-    /// 暗槓を実行する
-    // hand_tiles: [X, X+1, X+2, X+3] 槓をする4枚の牌のidの配列
+
+    /** 
+     * 他家の捨牌からポンを実行する（handsとmeldsを更新する）
+     * @param {Number} seat_id       シート番号（絶対値 0～4）
+     * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
+     * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     */
+    performPon(seat_id, hand_tiles, discard_tile){
+        this.performMeld('pon', seat_id, hand_tiles, discard_tile);
+    }
+
+    
+    /** 
+     * 他家の捨牌からチーを実行する（handsとmeldsを更新する）
+     * @param {Number} seat_id       シート番号（絶対値 0～4）
+     * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
+     * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     */
+    performChi(seat_id, hand_tiles, discard_tile){
+        this.performMeld('chi', seat_id, hand_tiles, discard_tile);
+    }
+    
+
+    /** 
+     * 他家の捨牌からカンを実行する（handsとmeldsを更新する）
+     * @param {Number} seat_id       シート番号（絶対値 0～4）
+     * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
+     * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     */
+    performKan(seat_id, hand_tiles, discard_tile){
+        this.performMeld('kan', seat_id, hand_tiles, discard_tile);
+    }
+
+
+    /** 
+     * 暗槓を実行する（手牌から牌を抜き出し、公開牌に追加する（ツモはしない）
+     * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
+     */
     performAnkan(hand_tiles){
         this.hands = this.hands.filter(e => !hand_tiles.includes(e));
         let meld_info = {
@@ -124,8 +250,11 @@ class Player{
         this.melds.push(meld_info);
     }
 
-    /// 加槓を実行する
-    // hand_tile: meldsのponに付け加える牌のid
+
+    /** 
+     * 加槓を実行する（handsとmeldsを更新する）
+     * @param {Number} hand_tile   手牌から抜き出す牌（タイルID表現）
+     */
     performKakan(hand_tile){   
         this.hands = this.hands.filter(e => e != hand_tile);
         for (var i = 0; i < this.melds.length; i++){
@@ -140,11 +269,16 @@ class Player{
         }
     }
 
-    // 立直を実行する  FIXME 1000点出すのはどこでする？
-    performRiichi(discard_tile){
+
+    /** 
+     * 立直を実行する（内部を立直状態にする）
+     * @param {Number} hand_tile   手牌から抜き出す牌（タイルID表現）
+     */
+    performRiichi(){
         this.is_riichi = true;
         return;
     }
+
 
     /////////////////////////////////////////////
     //////////// ゲッター・セッター /////////////
@@ -191,6 +325,9 @@ class Player{
     setUserName(user_name){
         this.user_name = user_name;
     }
+    getAllottedTime(){
+        return this.allotted_time;
+    }
     getEnableActions(){
         return this.enable_actions;
     }
@@ -216,6 +353,11 @@ class Player{
     /////////////////////////////////////////////
     //////////////// Socket通信 /////////////////
     /////////////////////////////////////////////
+    /**
+     * プレイヤーにソケット通信する
+     * @param {String} event  event名
+     * @param {*} data        送信するデータ
+     */
     sendMsg(event, data){
         if (this.socket_id != null){
             this.socket.to(this.socket_id).emit(event, data);
@@ -228,6 +370,7 @@ class Player{
         else 
             this.RandomAi(event, data);
     }
+
 
     /////////////////////////////////////////////
     /// AI（FIXME: 別のファイルに移行したい） ///
@@ -250,7 +393,7 @@ class Player{
         }
     }
     saySkip(){
-        this.game_manager.declareAction(this.seat, "skip");
+        this.game_manager.notTurnPlayerDeclareAction(this.seat, "skip");
     }
     sayDiscard(){
         this.game_manager.discardTile(this.seat, this.hands[0]);

@@ -67,6 +67,7 @@ let doraTiles = [];
 
 renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
+    console.log("リーチ");
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
         tileEl.classList.add('hand-tile');
@@ -91,16 +92,33 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
 }
 renderMeldTiles = function(el, tiles, img_width){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
-    const p2 = tiles[0].tgt_p; // ポンされた人
+    console.log(tiles);
+    let rotateFlag = false;
+    
     tiles.forEach((arr, _) => {
+        let p2 = arr.tgt_p;// 各組合せの泣かれた人
         arr.melds.forEach((tile, idx) => {
             const tileEl = document.createElement('img');
             tileEl.classList.add('hand-tile');
             tileEl.src = key2fname_map[tile];
             tileEl.style = "width: " + img_width + ";";
-            // ポンされた人側の牌だけ90度傾ける
-            if((3-p2) == idx){
+            // 泣かれた人側の牌だけ90度傾ける
+            if(arr.melds.length === 4){ // かん
+                if(p2 === 1 && idx === 3){
+                    rotateFlag = true;
+                }else if(p2 === 2 && idx === 1){
+                    rotateFlag = true;
+                }else if(p2 === 3 && idx === 0){
+                    rotateFlag = true;
+                }
+            }else if(arr.melds.length === 3){ // ぽん
+                if((3-p2) == idx){
+                    rotateFlag = true;
+                }
+            }
+            if(rotateFlag){
                 tileEl.style = "transform:rotate(90deg);";
+                rotateFlag = false;
             }
             el.appendChild(tileEl);
         });

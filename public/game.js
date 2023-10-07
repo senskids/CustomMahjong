@@ -22,6 +22,7 @@ actions.forEach(action => {
     actionBtns[action] = document.getElementById(`${action}-btn`);
     document.getElementById(`${action}-btn`).addEventListener('click', (event) => {
         console.log(action);
+        if(action === "riichi") is_riichi = true;
         socket.emit('declare-action', action);
     });    
 });
@@ -40,6 +41,9 @@ let currentTilesNum = 136;
 let is_Draw = false;
 // 牌を描画するかどうかを判定するフラグ
 let is_Render = false;
+
+// 直立下かどうかをはんていするフラグ
+let is_riichi = false; 
 
 // Socket.IOのインスタンスを作成
 const socket = io();
@@ -65,13 +69,25 @@ let meldTiles = [[], [], [], []];
 let doraTiles = [];
 // let wallTiles = [];
 
-renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false){
+let riichiTile= [null,null,null,null];// 直立の際の捨て牌の位置
+
+renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false, playerNum){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
+    
+    // 各プレイヤーの直立の際の捨て牌の位置記録
+    if(is_riichi && is_current == false){
+        riichiTile[playerNum] = tiles.length-1;
+    }
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
         tileEl.classList.add('hand-tile');
         tileEl.src = key2fname_map[tile];
-        tileEl.style = `width: ${img_width};`
+        tileEl.style = `width: ${img_width};`;
+        // 直立の牌の場合90度傾ける
+        if(idx == riichiTile[playerNum] && is_current == false){
+            tileEl.style = "transform:rotate(90deg);";
+            is_riichi = false;
+        }
         if (is_listener){
             tileEl.addEventListener('click', () => {
                 socket.emit('discard-tile', tile);
@@ -91,12 +107,32 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
 }
 renderMeldTiles = function(el, tiles, img_width){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
+    let rotateFlag = false;
     tiles.forEach((arr, _) => {
+        let p2 = arr.tgt_p;// 各組合せの泣かれた人
         arr.melds.forEach((tile, idx) => {
             const tileEl = document.createElement('img');
             tileEl.classList.add('hand-tile');
             tileEl.src = key2fname_map[tile];
             tileEl.style = "width: " + img_width + ";";
+            // 泣かれた人側の牌だけ90度傾ける
+            if(arr.melds.length === 4){ // かん
+                if(p2 === 1 && idx === 3){
+                    rotateFlag = true;
+                }else if(p2 === 2 && idx === 1){
+                    rotateFlag = true;
+                }else if(p2 === 3 && idx === 0){
+                    rotateFlag = true;
+                }
+            }else if(arr.melds.length === 3){ // ぽん
+                if((3-p2) == idx){
+                    rotateFlag = true;
+                }
+            }
+            if(rotateFlag){
+                tileEl.style = "transform:rotate(90deg);";
+                rotateFlag = false;
+            }
             el.appendChild(tileEl);
         });
     });
@@ -130,6 +166,7 @@ socket.on('data', (data) => {
         if (melds[i].code == 'full')
             meldTiles[i] = melds[i].value;
     }
+
     // ドラ
     doraTiles = data.doraTiles.value;
 
@@ -231,7 +268,7 @@ socket.on('diff-data', (data) => {
         // 牌を描画する
         for(var i = 0; i < 4; i++){
             renderTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false, (i == data.player)? true: false, is_Draw);
-            renderTiles(discardEls[i], discardTiles[i], "60px");
+            renderTiles(discardEls[i], discardTiles[i], "60px",false,false,false,i);
             renderMeldTiles(meldEls[i], meldTiles[i], "60px");
         }
     }

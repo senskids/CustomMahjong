@@ -17,6 +17,7 @@ const idx2player_map = ['my', 'right', 'opposite', 'left'];
 const gameEl = document.querySelector('#field');
 const gameStartBtn = document.querySelector('#game-start-btn');
 const actions = ['chi', 'pon', 'kan', 'ron', 'riichi', 'tsumo', 'skip'];
+const action_JPs = {'chi': "チー", 'pon': "ポン", 'kan': "カン", 'ron': "ロン", 'riichi': "リーチ", 'tsumo': "ツモ", 'skip': "スキップ"};
 const actionBtns = {};
 actions.forEach(action => {
     actionBtns[action] = document.getElementById(`${action}-btn`);
@@ -31,6 +32,7 @@ const nameEls = idx2player_map.map(p => document.getElementById(`${p}-name`));
 const handEls = idx2player_map.map(p => document.getElementById(`${p}-hand-tiles`));
 const discardEls = idx2player_map.map(p => document.getElementById(`${p}-discard-tiles`));
 const meldEls = idx2player_map.map(p => document.getElementById(`${p}-meld-tiles`));
+const declareEls = idx2player_map.map(p => document.getElementById(`${p}-declare-msg`));
 const doraEl = document.getElementById('dora-tiles');
 const wallEl = document.querySelector('wall-tiles');
 
@@ -276,6 +278,17 @@ socket.on('diff-data', (data) => {
     // 残り牌数を更新する
     tileNum.textContent = currentTilesNum;
 });
+
+
+// 立直、ポンなどの何かしらの宣言が生じた際に送られてくるイベント
+socket.on('declare', (data) => {
+    let p = data.player;         // 宣言した人
+    let action = data.action;    // 宣言の種類
+    declareEls[p].innerHTML = action_JPs[action];
+    declareEls[p].style.display = "block";
+    window.setTimeout(()=>{ declareEls[p].style.display = "none"; }, 1000);
+});
+
 
 socket.on('select-meld-cand', (data) => {
     if (data.length == 1)

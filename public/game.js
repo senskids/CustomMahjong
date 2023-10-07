@@ -85,7 +85,6 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
         tileEl.style = `width: ${img_width};`;
         // 直立の牌の場合90度傾ける
         if(idx == riichiTile[playerNum] && is_current == false){
-            console.log(riichiTile);
             tileEl.style = "transform:rotate(90deg);";
             is_riichi = false;
         }

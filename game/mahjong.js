@@ -438,6 +438,14 @@ class Mahjong {
             return;
         }
 
+        // プレイヤーpがaction_typeを宣言したことを全員に通知する
+        for (var i = 0; i < 4; i++) {
+            this.players[i].sendMsg('declare', {
+                player: (p - i + 4) % 4,  // player iから見てどこか
+                action: action_type, 
+            });
+        }
+
         if (action_type == 'kan') {
             var ret = [];
             var ankans = utils.canAnkan(player.getHands());
@@ -507,9 +515,13 @@ class Mahjong {
         let action_content = {player: p, action_type: action_type, priority: priority};
         this.declare_queue.push(action_content);
         
-        // この人がmeldしたことを全員にpushする処理を入れる  FIXME #16
-        for (var i = 0; i < 4; i++)
-            this.players[i].sendMsg('declare', action_content);
+        // この人が宣言したことを全員にpushする
+        for (var i = 0; i < 4; i++) {
+            this.players[i].sendMsg('declare', {
+                player: (p - i + 4) % 4,  // player iから見てどこか
+                action: action_type, 
+            });
+        }
         
         // このプレイヤーの宣言が1番目の場合は、現在設定されているsetTimeoutを解除し、1秒後にselectDeclaredAction関数を実行する
         if (this.declare_queue.length == 1){

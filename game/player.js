@@ -305,7 +305,22 @@ class Player{
         return this.user_id;
     }
     getUserName(){
-        return (this.is_active)? this.user_name: this.user_name + "(cpu)";
+        var user_wind;
+        switch(this.seat){
+            case 0:
+                user_wind = "東";
+                break;
+            case 1:
+                user_wind = "南";
+                break;
+            case 2:
+                user_wind = "西";
+                break;
+            case 3:
+                user_wind = "北";
+                break;
+        }
+        return (this.is_active)? this.user_name: this.user_name + "(cpu)"+"<br>"+user_wind;
     }
     getActive(){
         return this.is_active;

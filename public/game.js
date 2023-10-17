@@ -154,6 +154,8 @@ renderDoraTiles = function(el, tiles, img_width){
 
 // WebSocketでサーバからのデータを受信する処理
 socket.on('data', (data) => {
+    is_riichi = false;
+    riichiTile = [null, null, null, null];
     // ゲームの状態を更新する
     update_actions(data.enable_actions);
 

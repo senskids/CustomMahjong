@@ -60,6 +60,7 @@ class Player{
         this.melds = [];
         this.discards = [];
         this.sortHands();
+        this.is_riichi = false;
     }
 
 
@@ -132,11 +133,11 @@ class Player{
         // 自分が捨てた場合はreturn
         if (seat_relation == 0) return;     
         // 上家が捨てた場合のみ、チー出来るか判定
-        if (seat_relation == 3) if (utils.canChi(this.hands, tile).length > 0) this.enable_actions.chi = true;
+        if (seat_relation == 3) if (utils.canChi(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.chi = true;
         // ポン出来るか判定
-        if (utils.canPon(this.hands, tile).length > 0) this.enable_actions.pon = true;
+        if (utils.canPon(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.pon = true;
         // カン出来るか判定
-        if (utils.canKan(this.hands, tile).length > 0) this.enable_actions.kan = true;
+        if (utils.canKan(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.kan = true;
         // ロン出来るか判定
         if (utils.canRon(this.hands, this.melds, tile, seat_relation, field_info) > 0) this.enable_actions.ron = true;
         // 何かアクションを起こせるなら、スキップも押せるようにする  FIXME

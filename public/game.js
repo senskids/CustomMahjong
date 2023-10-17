@@ -111,7 +111,7 @@ renderMeldTiles = function(el, tiles, img_width){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     let rotateFlag = false;
     tiles.forEach((arr, _) => {
-        let p2 = arr.tgt_p;// 各組合せの泣かれた人
+        let p2 = arr.from_who;// 各組合せの泣かれた人
         arr.melds.forEach((tile, idx) => {
             const tileEl = document.createElement('img');
             tileEl.classList.add('hand-tile');
@@ -212,10 +212,10 @@ socket.on('diff-data', (data) => {
     }
     else if(data.action == 'pon' || data.action == 'chi' || data.action == 'kan'){
         console.log(data);
-        // var meld_info = {tgt_p: person, dicard: tile, hands: []};
+        // var meld_info = {from_who: person, dicard: tile, hands: []};
         var meld_info = data.meld;
         var p1 = data.player;  // 鳴いた人
-        var p2 = (p1 + meld_info.tgt_p + 4) % 4;  // 鳴かれた人  tgt_p : 1 => data.playerからみて下家
+        var p2 = (p1 + meld_info.from_who + 4) % 4;  // 鳴かれた人  from_who : 1 => data.playerからみて下家
         // 鳴かれた人の捨牌から最新のものを取り除く
         discardTiles[p2].pop();
         // 鳴いた人の手牌から必要なものを取り除く
@@ -229,7 +229,7 @@ socket.on('diff-data', (data) => {
                     handTiles[p1].splice(rand, 1);
                 }
         });
-        meldTiles[p1].push({'tgt_p': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
+        meldTiles[p1].push({'from_who': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
     }
     else if(data.action == 'ankan' || data.action == 'kakan'){
         console.log(data);
@@ -247,7 +247,7 @@ socket.on('diff-data', (data) => {
                 }
         });        
         if (data.action == 'ankan') {
-            meldTiles[p].push({'tgt_p': null, 'discard': null, 'melds': meld_info.hands});
+            meldTiles[p].push({'from_who': null, 'discard': null, 'melds': meld_info.hands});
         }
         else if (data.action == 'kakan'){ // FIXME 既にあるmeldsから探してそこに追加する
             for(var t = 0; t < meldTiles[p].length; t++){

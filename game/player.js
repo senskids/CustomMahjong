@@ -145,6 +145,21 @@ class Player{
     }
 
 
+    /** 
+     * p1_seat_idの人がp2_seat_idの人からdiscardを鳴いて、discard + handsを面子として公開した際に、enable_actionsを更新する
+     * @param {Number} p1_seat_id    鳴いた人のシート番号（絶対値 0～4）
+     * @param {Number} p2_seat_id    鳴かれた人のシート番号（絶対値 0～4）
+     * @param {Number} discard       鳴かれた牌（タイルID表現）
+     * @param {Array} hands          鳴いた人の手牌から出た牌（タイルID表現）
+     */
+    checkEnableActionsForMeld(p1_seat_id, p2_seat_id, discard, hands){
+        const seat_relation = this.getSeatRelationFromSeatId(p1_seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        if (seat_relation == 0) this.enable_actions.discard = true;
+        return;
+    }    
+
+
     /** FIXME : Not implemented
      * seat_idの人がtileを槓（暗槓or加槓）した際に、アクション（槍槓）ができるかチェックする
      * @param {Number} seat_id    シート番号（絶対値 0～4）
@@ -189,17 +204,19 @@ class Player{
      * @param {Number} seat_id       シート番号（絶対値 0～4）
      * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
      * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     * @returns  meld_info = {'type': String, 'from_who': 相対SeatID, 'discard': タイルID, 'hands': Array（タイルID）}
      */
-    performMeld(meld_type, seat_id, hand_tiles, discard_tile){
+    #performMeld(meld_type, seat_id, hand_tiles, discard_tile){
         this.hands = this.hands.filter(e => !hand_tiles.includes(e));
         let meld_info = {
             type: meld_type, 
-            from_hands: [...hand_tiles], 
-            from_discard: discard_tile, 
-            from_who: this.getSeatRelationFromSeatId(seat_id)  // このプレイヤーから見て1:下家、2:対面、3:上家
+            from_who: this.getSeatRelationFromSeatId(seat_id),  // このプレイヤーから見て1:下家、2:対面、3:上家
+            discard: discard_tile, 
+            hands: [...hand_tiles], 
         };
         this.is_menzen = false;
         this.melds.push(meld_info);
+        return meld_info; 
     }
 
 
@@ -208,9 +225,10 @@ class Player{
      * @param {Number} seat_id       シート番号（絶対値 0～4）
      * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
      * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     * @returns  meld_info = {'type': 'pon', 'from_who': 相対SeatID, 'discard': タイルID, 'hands': Array（タイルID）}
      */
     performPon(seat_id, hand_tiles, discard_tile){
-        this.performMeld('pon', seat_id, hand_tiles, discard_tile);
+        return this.#performMeld('pon', seat_id, hand_tiles, discard_tile);
     }
 
     
@@ -219,9 +237,10 @@ class Player{
      * @param {Number} seat_id       シート番号（絶対値 0～4）
      * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
      * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     * @returns  meld_info = {'type': 'chi', 'from_who': 3, 'discard': タイルID, 'hands': Array（タイルID）}
      */
     performChi(seat_id, hand_tiles, discard_tile){
-        this.performMeld('chi', seat_id, hand_tiles, discard_tile);
+        return this.#performMeld('chi', seat_id, hand_tiles, discard_tile);
     }
     
 
@@ -230,44 +249,53 @@ class Player{
      * @param {Number} seat_id       シート番号（絶対値 0～4）
      * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
      * @param {Number} discard_tile  捨てられた牌のタイルID表現
+     * @returns  meld_info = {'type': 'kan', 'from_who': 相対SeatID, 'discard': タイルID, 'hands': Array（タイルID）}
      */
     performKan(seat_id, hand_tiles, discard_tile){
-        this.performMeld('kan', seat_id, hand_tiles, discard_tile);
+        return this.#performMeld('kan', seat_id, hand_tiles, discard_tile);
     }
 
 
     /** 
      * 暗槓を実行する（手牌から牌を抜き出し、公開牌に追加する（ツモはしない）
      * @param {Array} hand_tiles     手牌から抜き出す牌の配列（タイルID表現）
+     * @returns  meld_info = {'type': 'ankan', 'from_who': null, 'discard': null, 'hands': Array（タイルID）}
      */
     performAnkan(hand_tiles){
         this.hands = this.hands.filter(e => !hand_tiles.includes(e));
         let meld_info = {
             type: 'ankan', 
-            from_hands: [...hand_tiles], 
-            from_discard: null, 
-            from_who: 0  // 自分で4枚集めたことを明示
+            from_who: null,  // 自分で4枚集めたことを明示
+            discard: null, 
+            hands: [...hand_tiles], 
         };
         this.melds.push(meld_info);
+        return meld_info;
     }
 
 
-    /** 
+    /**
      * 加槓を実行する（handsとmeldsを更新する）
      * @param {Number} hand_tile   手牌から抜き出す牌（タイルID表現）
+     * @returns  meld_info = {'type': 'kakan', 'from_who': 相対SeatId, 'discard': タイルID, hands: Array（タイルID）}
      */
     performKakan(hand_tile){   
         this.hands = this.hands.filter(e => e != hand_tile);
         for (var i = 0; i < this.melds.length; i++){
             let meld = this.melds[i];
-            var t1 = utils.id2tile[meld.from_discard];
+            if (meld.type != 'pon') continue;
+            var t1 = utils.id2tile[meld.discard];
             var t2 = utils.id2tile[hand_tile];
-            // FIXME m0とm5を=にする
-            if (meld.type == 'pon' && (t1 == t2)){
+            if (t1[1] == '0') t1[1] == '5';
+            if (t2[1] == '0') t2[1] == '5';
+            if (t1 == t2){
                 this.melds[i].type = 'kakan';
-                this.melds[i].from_hands.concat(hand_tile);
+                this.melds[i].hands.concat(hand_tile);
+                return this.melds[i];
             }
         }
+        console.log("[ERROR, performKakan, A] not found");
+        return null;
     }
 
 

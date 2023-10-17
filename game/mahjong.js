@@ -121,7 +121,7 @@ class Mahjong {
      */
     removePlayer(socket_id) {
         // socket_idのプレイヤーを探す
-        let p = this.whoAction(socket_id);
+        let p = this.#whoAction(socket_id);
         if (p < 0) return false;
         console.log("[mahjong.js, removePlayer] %s is removed", this.players[p].getUserName());
         this.players[p].setActive(false);
@@ -141,7 +141,6 @@ class Mahjong {
             // 現在はDebug用に強制的に次のゲームをスタートする  FIXME
             // return;
         }
-        console.log("[startGame start]");
 
         // プレイヤーが4人揃っていなければCPUを追加する
         for (var i = 0; this.players.length < 4; i++){
@@ -151,11 +150,9 @@ class Mahjong {
         }
 
         // ツモ順をランダムに決定する
-        console.log("自摸順をランダム化");
         utils.shuffleArray(this.players);
         this.players.forEach((p, pi) => {
             p.setSeat(pi);
-            console.log("  Player%d : %s, %s", pi+1, p.getUserName(), p.getUserId());
         });
 
         // 東1局0本場からスタートする
@@ -163,7 +160,6 @@ class Mahjong {
         this.round_count = 0;   // 1局
         this.honba_count = 0;   // 0本場
         this.state = this.GAME_STATE.PLAYING;
-        console.log("半荘戦スタート");
 
         // ゲームスタートの状態を全ユーザに共有する  FIXME
         for(var i = 0; i < 4; i++){
@@ -254,7 +250,7 @@ class Mahjong {
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
-        this.tiles = debug.createTenhoTiles();
+        // this.tiles = debug.createTenhoTiles();
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
@@ -315,15 +311,7 @@ class Mahjong {
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForDrawTile(this.cplayer_idx, draw_tile, this.getFieldInfo());
 
         // 全クライアントに通知
-        for(var i = 0; i < 4; i++){
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                player: (this.cplayer_idx - i + 4) % 4,  // player iから見てどこか 
-                action: 'draw', 
-                tile: (this.cplayer_idx == i)? draw_tile: this.secret_id, 
-                remain_tile_num: this.tiles.length,
-            });
-        }
+        this.sendDrawMsgToAll(this.cplayer_idx, draw_tile);
     }
 
 
@@ -335,72 +323,40 @@ class Mahjong {
      */
     discardTile(socket_id, discard_tile){
         // socket_idのプレイヤーがdiscard_tileを捨てる
-        const p = this.whoAction(socket_id);
-        const player = this.players[p];
-
-        if (!player.getEnableActions().discard) {
+        const p = this.#whoAction(socket_id);
+        if (!this.players[p].getEnableActions().discard) {
             console.log("[ERROR, discardTile, A] 現在捨てるアクションが禁止されている");
             return;
         }
 
-        let actRes = player.discardTile(discard_tile);
+        let actRes = this.players[p].discardTile(discard_tile);
         // 何かしら問題があって牌を捨てる行為に失敗した場合はreturn
         if (!actRes) return;
 
         // player pがdiscard_tileを捨てたことに対し、全ユーザのEnableActionsを更新
-        for(var i = 0; i < 4; i++) {
-            this.players[i].checkEnableActionsForDiscardTile(p, discard_tile, this.getFieldInfo()); 
-        }
-
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForDiscardTile(p, discard_tile, this.getFieldInfo()); 
+        
         // 他プレイヤーからの宣言受け入れの準備
-        let waiting_time = 0;
-        this.can_declare_action = true;
-        this.declare_queue = [];
-        this.player_skip_responses = [false, false, false, false];
-        for (var i = 0; i < 4; i++) {
-            if (this.players[i].canAnyAction()){
-                this.player_skip_responses[i] = false;
-                if (waiting_time < this.players[i].getAllottedTime() * 1000){
-                    waiting_time = this.players[i].getAllottedTime() * 1000;
-                }
-            }
-            else {
-                this.player_skip_responses[i] = true;
-            }
-        }
-        waiting_time = waiting_time + 100;  // 安全マージンの追加
-
+        this.declare_queue = [];           // プレイヤーからの宣言を貯めておくqueue
+        this.can_declare_action = true;    // プレイヤーからの宣言を受け入れる状態にする
+        const waiting_time = this.#getWaitTime() + 100;   // 何秒ほど待つべきか
+        this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
 
         // 全ユーザに情報を送る
-        for(var i = 0; i < 4; i++){
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                action: 'discard',  
-                player: (p - i + 4) % 4,  
-                tile: discard_tile,
-            });
-        }        
+        this.sendDiscardMsgToAll(p, discard_tile);
 
         // 明槓などで新ドラをオープンする
         if(this.is_open_next_dora){
             this.is_open_next_dora = false;
-            // ドラの情報を送る
-            for (var i = 0; i < 4; i++){
-                this.players[i].sendMsg('diff-data', {
-                    // enable_actions: this.players[i].getEnableActions(), 
-                    action: 'dora',  
-                    // player: null, 
-                    tile: this.dora[this.dora.length - 1], 
-                });
-            }
+            this.sendDoraOpenMsgToAll();
         }
 
-        if (waiting_time == 100){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
+        if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
             this.timeout_id = setTimeout(this.moveNext.bind(this), waiting_time);
         }
         else {   // 誰かが宣言する権利を持っているので、宣言可能時間を確保する
+            this.next_process_info = {"func": this.moveNext, "opt": null};
             this.timeout_id = setTimeout(this.selectDeclaredAction.bind(this), waiting_time);
-            this.next_process_info = {"func": "moveNext", "opt": null};
         }
     }
 
@@ -429,8 +385,8 @@ class Mahjong {
      * @next クライアントからのmsg待ち or performAnkan or performKakan or performRiichi or performTsumo
      */
     turnPlayerDeclareAction(socket_id, action_type){
-        let p = this.whoAction(socket_id);
-        let player = this.players[p];
+        const p = this.#whoAction(socket_id);
+        const player = this.players[p];
 
         // socket_idプレイヤーはaction_typeを宣言できるか判定する
         if (!(player.enable_actions[action_type]) || p != this.cplayer_idx){
@@ -438,13 +394,8 @@ class Mahjong {
             return;
         }
 
-        // プレイヤーpがaction_typeを宣言したことを全員に通知する
-        for (var i = 0; i < 4; i++) {
-            this.players[i].sendMsg('declare', {
-                player: (p - i + 4) % 4,  // player iから見てどこか
-                action: action_type, 
-            });
-        }
+        // プレイヤーpがaction_typeを宣言したことを全員に通知する    
+        this.sendDeclareMsgToAll(p, action_type);
 
         if (action_type == 'kan') {
             var ret = [];
@@ -475,8 +426,8 @@ class Mahjong {
      */
     notTurnPlayerDeclareAction(socket_id, action_type){
         // 誰が宣言したか
-        let p = this.whoAction(socket_id);
-        let player = this.players[p];
+        const p = this.#whoAction(socket_id);
+        const player = this.players[p];
 
         // ツモしたプレイヤーのアクションの場合  FIXME : ツモと捨牌のアクションで入口の関数を分けたい
         if (p == this.cplayer_idx){
@@ -501,7 +452,7 @@ class Mahjong {
             if (this.player_skip_responses.every(Boolean)){
                 this.can_declare_action = false;
                 clearTimeout(this.timeout_id);
-                if (this.next_process_info["func"] == "moveNext")
+                if (this.next_process_info.func === this.moveNext)
                     this.timeout_id = setTimeout(this.moveNext.bind(this), 10);
                 else 
                     this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, this.next_process_info["opt"]);
@@ -516,12 +467,7 @@ class Mahjong {
         this.declare_queue.push(action_content);
         
         // この人が宣言したことを全員にpushする
-        for (var i = 0; i < 4; i++) {
-            this.players[i].sendMsg('declare', {
-                player: (p - i + 4) % 4,  // player iから見てどこか
-                action: action_type, 
-            });
-        }
+        this.sendDeclareMsgToAll(p, action_type);
         
         // このプレイヤーの宣言が1番目の場合は、現在設定されているsetTimeoutを解除し、1秒後にselectDeclaredAction関数を実行する
         if (this.declare_queue.length == 1){
@@ -539,6 +485,15 @@ class Mahjong {
         // declare_queueにこれ以上pushしないようにflag管理する
         this.can_declare_action = false;
 
+        // declare_queueに何も入っていないなら、次にすべきアクションを実行する
+        if (this.declare_queue.length == 0){
+            if (this.next_process_info.func === this.moveNext)
+                this.timeout_id = setTimeout(this.moveNext.bind(this), 10);
+            else 
+                this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, this.next_process_info["opt"]);
+            return;
+        }
+
         // declare_queueからどのアクションを採用するかを選ぶ（ロン、(カン、ポン)、チーの順番で優先する）
         let selected = [this.declare_queue[0]];
         let is_exist_ron = selected[0].priority > 100;
@@ -555,11 +510,11 @@ class Mahjong {
         }
 
         // FIXME : 槍槓ロンに対応するために無理やり実装している...
-        if (this.next_process_info["func"] == "drawReplacementTile"){
+        if (this.next_process_info.func === this.drawReplacementTile){
             let p2 = this.cplayer_idx;  // 槍槓された人
             var tmp = this.players[this.cplayer_idx].getMelds();
             let discard = tmp[tmp.length - 1].hands[0];   // FIXME
-            this.performRon(selected, p2, discard);
+            setTimeout(this.performRon.bind(this), 10, selected, p2, discard);
             return;
         }
 
@@ -576,27 +531,30 @@ class Mahjong {
         // ポン、カン、チーのいずれか
         let p1 = selected[0].player;  // 拾う人
         let meld_type = selected[0].action_type;  // ポン、チー、カンの種類
-        this.meld_info = {p1: p1, p2: p2, discard: discard, meld_type: meld_type};
+        this.next_process_info = {"func": null, "opt": {"p1":p1, "p2":p2, "discard": discard}}
 
         let ret;  // 手牌から切るツモ達の候補
         if (meld_type == 'chi') {
+            this.next_process_info["func"] = this.performChi;
             ret = utils.canChi(this.players[p1].getHands(), discard);
             if (ret.length > 1) this.players[p1].sendMsg('select-meld-cand', ret);
-            else setTimeout(this.performChi.bind(this), 10, p1, ret[0]);
+            else setTimeout(this.performChi.bind(this), 10, p1, p1, p2, discard, ret[0]);
         }
         else if (meld_type == 'pon') {
+            this.next_process_info["func"] = this.performPon;
             ret = utils.canPon(this.players[p1].getHands(), discard);
             if (ret.length > 1) this.players[p1].sendMsg('select-meld-cand', ret);
-            else setTimeout(this.performPon.bind(this), 10, p1, ret[0]);
+            else setTimeout(this.performPon.bind(this), 10, p1, p1, p2, discard, ret[0]);
         }
         else if (meld_type == 'kan') {  // カンは必ず1通りしかできない
+            this.next_process_info["func"] = this.performKan;
             ret = utils.canKan(this.players[p1].getHands(), discard);
-            setTimeout(this.performKan.bind(this), 10, p1, ret[0]);
+            setTimeout(this.performKan.bind(this), 10, p1, p1, p2, discard, ret[0]);
         }
     }
 
 
-    /** FIXME : 廃止してperformPon, Chi, Kanに分離する
+    /** 
      * 実際にアクションを実行する
      * @param {*} socket_id 
      * @param {*} hands 
@@ -604,121 +562,110 @@ class Mahjong {
      */
     performMeld(socket_id, hands){
         // Pon, Chi, Kanに分離
-        if (this.meld_info.meld_type == 'pon') this.performPon(socket_id, hands);
-        else if (this.meld_info.meld_type == 'chi') this.performChi(socket_id, hands);
-        else if (this.meld_info.meld_type == 'kan') this.performKan(socket_id, hands);
+        let p1 = this.next_process_info.opt.p1;            // 鳴く人
+        let p2 = this.next_process_info.opt.p2;            // 鳴かれる人
+        let discard = this.next_process_info.opt.discard;  // 鳴かれる牌
+        let func = this.next_process_info.func;            // 次に実行すべき関数（pon, chi, kan）
+        (func.bind(this))(socket_id, p1, p2, discard, hands);
     }
     
     
     /**
      * ポンを実行する
-     * @param {String} socket_id   アクションする人のID
+     * @param {String} socket_id   これを実行した人のID
+     * @param {Number} p1          鳴く人のID
+     * @param {Number} p2          鳴かれる人のID
+     * @param {Number} discard     鳴かれる牌のID
      * @param {Array} hands        手出しする牌
      * @next クライアントからのmsg待ち（discardTile）
      */
-    performPon(socket_id, hands) {
-        let p = this.whoAction(socket_id);
-        if (this.meld_info.p1 != p){
-            console.log("[ERROR, performMeld, A] illigal action");
-            return;
-        }
-        let p2 = this.meld_info.p2;
+    performPon(socket_id, p1, p2, discard, hands) {
+        // 正しい人が正しい鳴きをしようとしているかチェックする
+        if (!this.#checkLegalActionForDiscardMeld(socket_id, p1, p2, discard, 'pon')) return;
 
-        // pが鳴きを実行する  FIXME : 喰い変えの禁止を関数内で実装する
-        this.cplayer_idx = p;  // 手番を変更する
-        let discard = this.players[p2].getDiscards().pop();  // 河から牌を抜く
-        this.players[p].performPon(this.meld_info.p2, hands, this.meld_info.discard);  // 手牌から牌を抜く
+        // 河から牌を抜く
+        discard = this.players[p2].getDiscards().pop();  
 
-        // 拾う人から見て、鳴かれた人は誰か：1:下家, 2:対面, 3:上家
-        this.meld_info["tgt_p"] = (this.meld_info.p2 - p + 4) % 4;
-        this.meld_info["hands"] = [...hands];
+        // 手牌からhandsを抜いてmeldを更新する
+        // meld_info = {'type': 'pon', 'from_who': 相対SeatID, 'discard': タイルID, hands: Array（タイルID）}
+        let meld_info = this.players[p1].performPon(p2, hands, discard);  
+
+        // 手番を変更する
+        this.cplayer_idx = p1;  
+
+        // プレイヤーが鳴いたことによって、各自が何をできるか更新する
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForMeld(p1, p2, discard, [...hands]); 
+
         // 全プレイヤーに情報を送る
-        for(var i = 0; i < 4; i++){
-            // FIXME
-            this.players[i].enable_actions = {discard: i == p, pon: false, chi: false, ron: false, riichi: false, kan: false};
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'pon', 
-                meld: this.meld_info, 
-            });
-        }      
+        this.sendMeldMsgToAll(p1, 'pon', meld_info);
     }
 
 
     /**
      * チーを実行する
-     * @param {String} socket_id   アクションする人のID
+     * @param {String} socket_id   これを実行した人のID
+     * @param {Number} p1          鳴く人のID
+     * @param {Number} p2          鳴かれる人のID
+     * @param {Number} discard     鳴かれる牌のID
      * @param {Array} hands        手出しする牌
      * @next クライアントからのmsg待ち（discardTile）
      */
-    performChi(socket_id, hands) {
-        let p = this.whoAction(socket_id);
-        if (this.meld_info.p1 != p){
-            console.log("[ERROR, performMeld, A] illigal action");
-            return;
-        }
-        let p2 = this.meld_info.p2;
+    performChi(socket_id, p1, p2, discard, hands) {
+        // 正しい人が正しい鳴きをしようとしているかチェックする
+        if (!this.#checkLegalActionForDiscardMeld(socket_id, p1, p2, discard, 'chi')) return;
 
-        // pが鳴きを実行する  FIXME : 喰い変えの禁止を関数内で実装する
-        this.cplayer_idx = p;  // 手番を変更する
-        let discard = this.players[p2].getDiscards().pop();  // 河から牌を抜く
-        this.players[p].performChi(this.meld_info.p2, hands, this.meld_info.discard);  // 手牌から牌を抜く
+        // 河から牌を抜く
+        discard = this.players[p2].getDiscards().pop();  
 
-        // 拾う人から見て、鳴かれた人は誰か：1:下家, 2:対面, 3:上家
-        this.meld_info["tgt_p"] = (this.meld_info.p2 - p + 4) % 4;
-        this.meld_info["hands"] = [...hands];
-    
+        // 手牌からhandsを抜いてmeldを更新する
+        // meld_info = {'type': 'chi', 'from_who': 3, 'discard': タイルID, hands: Array（タイルID）}
+        let meld_info = this.players[p1].performChi(p2, hands, discard);  
+
+        // 手番を変更する
+        this.cplayer_idx = p1;  
+
+        // プレイヤーが鳴いたことによって、各自が何をできるか更新する
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForMeld(p1, p2, discard, [...hands]); 
+
         // 全プレイヤーに情報を送る
-        for(var i = 0; i < 4; i++){
-            // FIXME
-            this.players[i].enable_actions = {discard: i == p, pon: false, chi: false, ron: false, riichi: false, kan: false};
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'chi', 
-                meld: this.meld_info, 
-            });
-        }      
+        this.sendMeldMsgToAll(p1, 'chi', meld_info);
     }
 
 
     /**
      * カンを実行する（捨牌に対し他の人が槓する）
-     * @param {String} socket_id   アクションする人のID
+     * @param {String} socket_id   これを実行した人のID
+     * @param {Number} p1          鳴く人のID
+     * @param {Number} p2          鳴かれる人のID
+     * @param {Number} discard     鳴かれる牌のID
      * @param {Array} hands        手出しする牌
      * @next クライアントからのmsg待ち（discardTile）
      */
-    performKan(socket_id, hands) {
-        let p = this.whoAction(socket_id);
-        if (this.meld_info.p1 != p){
-            console.log("[ERROR, performMeld, A] illigal action");
-            return;
-        }
-        let p2 = this.meld_info.p2;
+    performKan(socket_id, p1, p2, discard, hands) {
+        // 正しい人が正しい鳴きをしようとしているかチェックする
+        if (!this.#checkLegalActionForDiscardMeld(socket_id, p1, p2, discard, 'chi')) return;
 
-        // pが鳴きを実行する
-        this.cplayer_idx = p;  // 手番を変更する
-        let discard = this.players[p2].getDiscards().pop();  // 河から牌を抜く
-        this.players[p].performKan(this.meld_info.p2, hands, this.meld_info.discard);  // 手牌から牌を抜く
+        // 河から牌を抜く
+        discard = this.players[p2].getDiscards().pop();  
+
+        // 手牌からhandsを抜いてmeldを更新する
+        // meld_info = {'type': 'kan', 'from_who': 相対SeatID, 'discard': タイルID, hands: Array（タイルID）}
+        let meld_info = this.players[p1].performKan(p2, hands, discard);
+
+        // kans（フィールド全体のカン管理リスト）を更新する
         this.kans.push({'player': p, 'from_who': p2});  
 
-        // 拾う人から見て、鳴かれた人は誰か：1:下家, 2:対面, 3:上家
-        this.meld_info["tgt_p"] = (this.meld_info.p2 - p + 4) % 4;
-        this.meld_info["hands"] = [...hands];
+        // 手番を変更する
+        this.cplayer_idx = p1;  
 
-        for(var i = 0; i < 4; i++){
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'kan',
-                meld: {"tgt_p":(this.meld_info.p2 - p + 4) % 4, "discard": discard, "hands":[...hands]},   
-                // tile:  (p == i)? replacement_tile: this.secret_id, 
-            });
-        }      
+        // プレイヤーが鳴いたことによって、各自が何をできるか更新する
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForMeld(p1, p2, discard, [...hands]); 
 
-        this.next_process_info = {"func": "drawReplacementTile", "opt": "kan"};
-        this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10);        
+        // 全プレイヤーに情報を送る
+        this.sendMeldMsgToAll(p1, 'kan', meld_info);
+        
+        // 嶺上牌を引く処理に移る（槍槓は発生しない）
+        setTimeout(this.drawReplacementTile.bind(this), 10, 'kan'); 
     }
 
 
@@ -728,66 +675,44 @@ class Mahjong {
      * @param {Array} hands        手出しする牌
      */
     performAnkan(socket_id, hands){
+        let p = this.#whoAction(socket_id);  
+
         // 正しいプレイヤーが正しい手牌を選んだかチェックする
-        let p = this.whoAction(socket_id);  
-        let player = this.players[p];
-        if (!(player.enable_actions.kan) || p != this.cplayer_idx){
-            console.log("[ERROR, performAnkan, A] illigal action");
+        if (!(this.players[p].enable_actions.kan) || p != this.cplayer_idx){
+            console.log("[ERROR, performAnkan, A] illegal action");
             return;
         }
-        var ret = utils.canAnkan(player.getHands());
+        var ret = utils.canAnkan(this.players[p].getHands());
         if (!ret.some(sub => sub.length === hands.length && sub.every((e, i) => e === hands[i]))){
-            console.log("[ERROR, performAnkan, B] illigal action");
+            console.log("[ERROR, performAnkan, B] illegal action");
             return;
         }
 
-        // カンを実行する
-        player.performAnkan(hands);
+        // 暗槓を実行する（手牌からhandsを抜いてmeldを更新する）
+        // meld_info = {'type': 'ankan', 'from_who': null, 'discard': null, hands: Array（タイルID）}
+        let meld_info = this.players[p].performAnkan(hands);
+
+        // kans（フィールド全体のカン管理リスト）を更新する
         this.kans.push({'player': p, 'from_who': null});
 
         // プレイヤーpがhands[0]で槓したことに対し、他プレイヤーが槍槓出来るかを確認
-        let is_anyone_can_ron = false;
-        for(var i = 0; i < 4; i++) {
-            this.players[i].checkEnableActionsForKan(p, hands[0], this.getFieldInfo()); 
-            if (this.players[i].getEnableActions().ron) is_anyone_can_ron = true;
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForKan(p, hands[0], this.getFieldInfo()); 
+
+        // 他プレイヤーからの宣言受け入れの準備
+        this.declare_queue = [];           // プレイヤーからの宣言を貯めておくqueue
+        this.can_declare_action = true;    // プレイヤーからの宣言を受け入れる状態にする
+        const waiting_time = this.#getWaitTime() + 100;   // 何秒ほど待つべきか
+        this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
+
+        // 全プレイヤーに情報を送る
+        this.sendMeldMsgToAll(p, 'ankan', meld_info);
+
+        if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
+            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), waiting_time, "ankan");
         }
-
-        for(var i = 0; i < 4; i++){
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'ankan',  
-                meld: {"tgt_p":null, "hands":[...hands]}, 
-                // tile:  (p == i)? replacement_tile: this.secret_id, 
-            });
-        }      
-
-
-        // 槍槓出来るプレイヤーがいるならば待つ
-        if (is_anyone_can_ron) {
-            // 他プレイヤーからの宣言受け入れの準備
-            let waiting_time = 0;
-            this.can_declare_action = true;
-            this.declare_queue = [];
-            this.player_skip_responses = [false, false, false, false];
-            for (var i = 0; i < 4; i++) {
-                if (this.players[i].canAnyAction()){
-                    this.player_skip_responses[i] = false;
-                    if (waiting_time < this.players[i].getAllottedTime() * 1000){
-                        waiting_time = this.players[i].getAllottedTime() * 1000;
-                    }
-                }
-                else {
-                    this.player_skip_responses[i] = true;
-                }
-            }
-            waiting_time = waiting_time + 100;  // 安全マージンの追加
-            this.next_process_info = {"func": "drawReplacementTile", "opt": "ankan"};
+        else {   // 誰かが槍槓ロンする権利を持っているので、宣言可能時間を確保する
+            this.next_process_info = {"func": this.drawReplacementTile, "opt": "ankan"};
             this.timeout_id = setTimeout(this.selectDeclaredAction.bind(this), waiting_time);
-        }
-        // 槍槓出来るプレイヤーがいないなら嶺上ツモにうつる
-        else{
-            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, "ankan");
         }
     }
 
@@ -798,63 +723,44 @@ class Mahjong {
      * @param {Array} hands        手出しする牌
      */
     performKakan(socket_id, hand){
-        let p = this.whoAction(socket_id);  
-        let player = this.players[p];
-        if (!(player.enable_actions.kan) || p != this.cplayer_idx) {
-            console.log("[ERROR, performKakan, A] illigal action");
+        let p = this.#whoAction(socket_id);  
+ 
+        // 正しいプレイヤーが正しい手牌を選んだかチェックする
+        if (!(this.players[p].enable_actions.kan) || p != this.cplayer_idx) {
+            console.log("[ERROR, performKakan, A] illegal action");
             return;
         }
-        var ret = utils.canKakan(player.getHands(), player.getMelds());
+        var ret = utils.canKakan(this.players[p].getHands(), this.players[p].getMelds());
         if (!ret.includes(hand)){
-            console.log("[ERROR, performKakan, B] illigal action");
+            console.log("[ERROR, performKakan, B] illegal action");
             return;
         }
-        player.performKakan(hand);
-        this.kans.push({'player': p, 'from_who': null});  // FIXME : from_who ?
+
+        // 加槓を実行する（手牌からhandを抜いてmeldを更新する）
+        // meld_info = {'type': 'kakan', 'from_who': 相対SeatId, 'discard': タイルID, hands: Array（タイルID）}
+        let meld_info = this.players[p].performKakan(hand);
+
+        // kans（フィールド全体のカン管理リスト）を更新する
+        this.kans.push({'player': p, 'from_who': (p + meld_info.from_who + 4) % 4});  
 
         // プレイヤーpがhandで槓したことに対し、他プレイヤーが槍槓出来るかを確認
-        let is_anyone_can_ron = false;
-        for(var i = 0; i < 4; i++) {
-            this.players[i].checkEnableActionsForKan(p, hand, this.getFieldInfo()); 
-            if (this.players[i].getEnableActions().ron) is_anyone_can_ron = true;
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForKan(p, hand, this.getFieldInfo()); 
+
+        // 他プレイヤーからの宣言受け入れの準備
+        this.declare_queue = [];           // プレイヤーからの宣言を貯めておくqueue
+        this.can_declare_action = true;    // プレイヤーからの宣言を受け入れる状態にする
+        const waiting_time = this.#getWaitTime() + 100;   // 何秒ほど待つべきか
+        this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
+
+        // 全プレイヤーに情報を送る
+        this.sendMeldMsgToAll(p, 'kakan', meld_info);
+
+        if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
+            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), waiting_time, "ankan");
         }
-
-        for(var i = 0; i < 4; i++){
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'kakan',
-                meld: {"tgt_p":null, "hands":[hand]},   
-                // tile:  (p == i)? replacement_tile: this.secret_id, 
-            });
-        }      
-
-        // 槍槓出来るプレイヤーがいるならば待つ
-        if (is_anyone_can_ron) {
-            // 他プレイヤーからの宣言受け入れの準備
-            let waiting_time = 0;
-            this.can_declare_action = true;
-            this.declare_queue = [];
-            this.player_skip_responses = [false, false, false, false];
-            for (var i = 0; i < 4; i++) {
-                if (this.players[i].canAnyAction()){
-                    this.player_skip_responses[i] = false;
-                    if (waiting_time < this.players[i].getAllottedTime() * 1000){
-                        waiting_time = this.players[i].getAllottedTime() * 1000;
-                    }
-                }
-                else {
-                    this.player_skip_responses[i] = true;
-                }
-            }
-            waiting_time = waiting_time + 100;  // 安全マージンの追加
-            // FIXME : プレイヤーに送信する処理
-            this.next_process_info = {"func": "drawReplacementTile", "opt": "kakan"};
+        else {   // 誰かが槍槓ロンする権利を持っているので、宣言可能時間を確保する
+            this.next_process_info = {"func": this.drawReplacementTile, "opt": "kakan"};
             this.timeout_id = setTimeout(this.selectDeclaredAction.bind(this), waiting_time);
-        }
-        // 槍槓出来るプレイヤーがいないなら嶺上ツモにうつる
-        else{
-            this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, "kakan");
         }
     }
 
@@ -890,36 +796,22 @@ class Mahjong {
         } 
 
         // 全プレイヤーにpが嶺上ツモした情報を送る
-        for(var i = 0; i < 4; i++){
-            this.players[i].sendMsg('diff-data', {
-                enable_actions: this.players[i].getEnableActions(), 
-                player: (p - i + 4) % 4,  // player iから見てどこか 
-                action: 'replacement-draw',  
-                tile:  (this.cplayer_idx == i)? replacement_tile: this.secret_id, 
-                remain_tile_num: this.tiles.length, 
-            });
-        }    
-        
-        if (kan_type == 'ankan'){
-            for(var i = 0; i < 4; i++){
-                this.players[i].sendMsg('diff-data', {
-                    action: 'dora',  
-                    tile: this.dora[this.dora.length - 1], 
-                });
-            }    
-        }
-        else{
+        this.sendDrawMsgToAll(p, replacement_tile, true);
+
+        // 暗槓の場合は新ドラオープン、それ以外の場合は捨てた時にオープンする
+        if (kan_type == 'ankan')
+            this.sendDoraOpenMsgToAll();
+        else
             this.is_open_next_dora = true;
-        }
     }  
 
 
     performRiichi(socket_id, discard_tile){
         // 正しい人が正しい牌を切ったかを判定
-        let p = this.whoAction(socket_id);  
+        let p = this.#whoAction(socket_id);  
         let player = this.players[p];
         if (!(player.enable_actions.riichi) || p != this.cplayer_idx){
-            console.log("[ERROR, performRiichi, A] illigal action");
+            console.log("[ERROR, performRiichi, A] illegal action");
             return;
         }
         var ret = utils.canRiichi(player.getHands(), player.getMelds());
@@ -942,10 +834,10 @@ class Mahjong {
      * @next forwardGame  FIXME : あがり画面に移行するようにする
      */
     performTsumo(socket_id){
-        let p = this.whoAction(socket_id);  
+        let p = this.#whoAction(socket_id);  
         let player = this.players[p];
         if (!(player.enable_actions.tsumo) || p != this.cplayer_idx){
-            console.log("[ERROR, performTsumo, A] illigal action");
+            console.log("[ERROR, performTsumo, A] illegal action");
             return;
         }
         // 点数を取得する  FIXME
@@ -1017,7 +909,7 @@ class Mahjong {
      * @param {String or Number} socket_id  cpuの場合は、座席番号を送る
      * @returns プレイヤーの番号0～4、エラー時は-1
      */
-    whoAction(socket_id){
+    #whoAction(socket_id){
         // CPUの場合
         if(!isNaN(socket_id) && socket_id < 4)  
             return socket_id;
@@ -1029,6 +921,142 @@ class Mahjong {
         console.log("[Error, whoAction, A] socket_id : %s", socket_id);
         return -1;
     }
+
+
+    /**
+     * p1がp2の捨てたdiscardをactionする予約がある際に、本当にそれが実行できるかチェックする
+     * @param {String or Number} socket_id  この関数を実行したプレイヤー（p1と同じはず）
+     * @param {Number} p1        予約済みのアクションするプレイヤー
+     * @param {Number} p2        予約済みのアクションされるプレイヤー
+     * @param {Number} discard   予約済みの鳴かれる牌
+     * @param {String} action    アクションの種類（'pon', 'kan', 'chi'のいずれか）
+     * @returns  実行可能：true, 実行不可能：false
+     */
+    #checkLegalActionForDiscardMeld(socket_id, p1, p2, discard, action){
+        // この関数を呼んだ人は正しい？
+        let p = this.#whoAction(socket_id);
+        if (p1 != p){
+            console.log(`[ERROR, perform${action}, A] player ${socket_id}(${p}) is not ${p1}`);
+            return false;
+        }
+        // 捨牌は正しい？
+        var tmp = this.players[p2].getDiscards();
+        let _discard = tmp[tmp.length - 1];
+        if (_discard != discard){
+            console.log(`[ERROR, perform${action}, B] discard ${_discard} is not ${discard}`);
+            return false;
+        }
+        // p1はactionを実行できる？
+        if (!this.players[p1].enable_actions[action]){
+            console.log(`[ERROR, perform${action}, C] player ${p1} can not do ${action}`);
+            return false;
+        }
+        return true;
+    }
+
+
+    /**
+     * プレイヤーのアクション可否と持ち時間から、何秒待つのが適切か計算して返す
+     * @returns {Number} 待つべき時間
+     */
+    #getWaitTime(){
+        let waiting_time = 0;
+        for (var i = 0; i < 4; i++) {
+            if (this.players[i].canAnyAction()){
+                if (waiting_time < this.players[i].getAllottedTime() * 1000){
+                    waiting_time = this.players[i].getAllottedTime() * 1000;
+                }
+            }
+        }
+        return waiting_time;
+    }
+    
+
+    ///// クライアントに情報を送るメソッド群 /////
+
+    /**
+     * draw_playerがdraw_tileをツモしたことを全員に通知する
+     * @param {Number} draw_player 
+     * @param {Number} draw_tile 
+     * @param {Boolean} is_replacement_draw  嶺上ツモかどうか、デフォルトfalse
+     */
+    sendDrawMsgToAll(draw_player, draw_tile, is_replacement_draw = false){
+        for(var i = 0; i < 4; i++){
+            this.players[i].sendMsg('diff-data', {
+                enable_actions: this.players[i].getEnableActions(), 
+                player: (draw_player - i + 4) % 4,  // player iから見てどこか 
+                action: (is_replacement_draw)? 'replacement-draw': 'draw', 
+                tile: (draw_player == i)? draw_tile: this.secret_id, 
+                remain_tile_num: this.tiles.length,
+            });
+        }
+    }
+
+
+    /**
+     * discard_playerがdiscard_tileを捨てたことを全員に通知する
+     * @param {*} draw_player 
+     * @param {*} draw_tile 
+     */
+    sendDiscardMsgToAll(discard_player, discard_tile){
+        // 全ユーザに情報を送る
+        for(var i = 0; i < 4; i++){
+            this.players[i].sendMsg('diff-data', {
+                enable_actions: this.players[i].getEnableActions(), 
+                action: 'discard',  
+                player: (discard_player - i + 4) % 4,  // player iから見てどこか
+                tile: discard_tile,
+            });
+        }                
+    }
+
+
+    /**
+     * action_playerが面子を公開したことを全員に通知する
+     * @param {Number} action_player 
+     * @param {String} action_type   'pon', 'chi', 'kan', 'ankan', 'kakan'のいずれか
+     * @param {Array} meld_info      {'tgt_p': Number, 'discard': Number, 'hands': Array}
+     */
+    sendMeldMsgToAll(action_player, action_type, meld_info){
+        for(var i = 0; i < 4; i++){
+            this.players[i].sendMsg('diff-data', {
+                enable_actions: this.players[i].getEnableActions(), 
+                player: (action_player - i + 4) % 4,  // player iから見てどこか 
+                action: action_type, 
+                meld: meld_info, 
+            });
+        }      
+    }
+
+
+    /**
+     * 新ドラを全員に通知する
+     */
+    sendDoraOpenMsgToAll(){
+        // ドラの情報を送る
+        for (var i = 0; i < 4; i++){
+            this.players[i].sendMsg('diff-data', {
+                action: 'dora',  
+                tile: this.dora[this.dora.length - 1], 
+            });
+        }
+    }
+
+
+    /**
+     * declare_playerがaction_typeを宣言したことを全員に通知する
+     * @param {*} declare_player 
+     * @param {*} action_type 
+     */
+    sendDeclareMsgToAll(declare_player, action_type){
+        for (var i = 0; i < 4; i++) {
+            this.players[i].sendMsg('declare', {
+                player: (declare_player - i + 4) % 4,  // player iから見てどこか
+                action: action_type, 
+            });
+        }
+    }
+
 
 }
 

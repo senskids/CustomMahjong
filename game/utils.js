@@ -53,14 +53,14 @@ function convert2Majiang(hands = [], melds = [], tsumo = null) {
         ret._zimo = id2tile[tsumo];
     }
     melds.forEach(info => {
-        let hs = info.from_hands.map((e, i) => (id2tile[e][1] != "0")? [parseInt(id2tile[e][1]) + 0.1 * i, id2tile[e][1]]: [4.5 + 0.1 * i, "0"]);
-        if (info.from_who != 0){  // 暗槓以外の場合
-            let d = id2tile[info.from_discard];
+        let hs = info.hands.map((e, i) => (id2tile[e][1] != "0")? [parseInt(id2tile[e][1]) + 0.1 * i, id2tile[e][1]]: [4.5 + 0.1 * i, "0"]);
+        if (info.from_who != null){  // 暗槓以外の場合
+            let d = id2tile[info.discard];
             let ap = ['', '-', '=', '+'][info.from_who];
             hs = hs.concat([(d[1] != "0")? [parseInt(d[1]) + 0.25, d[1] + ap]: [4.75, `0${ap}`]]);
         }
         hs.sort((a, b) => a[0] - b[0]);
-        let msg = id2tile[info.from_hands[0]][0];  // 'm', 'p', 's', 'z'
+        let msg = id2tile[info.hands[0]][0];  // 'm', 'p', 's', 'z'
         hs.forEach(e=>{msg += e[1];});
         ret._fulou.push(msg);
     });
@@ -175,7 +175,7 @@ exports.canKakan = function(hands, melds){
     const ret = [];
     for (var i = 0; i < melds.length; i++){
         if (melds[i].type != 'pon') continue;
-        let tgt =  id2tile[melds[i].from_discard]; 
+        let tgt =  id2tile[melds[i].discard]; 
         if (tgt[1] == "0") tgt = `${tgt[0]}5`;
         const idx = tiles.indexOf(tgt);
         if (idx >= 0)

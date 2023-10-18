@@ -106,6 +106,10 @@ class Player{
         this.hands.splice(idx, 1);
         this.sortHands();
         this.discards.push(tile);
+
+        // 一時的な禁止捨牌を解除する
+        if (!this.is_riichi && this.forbidden_discards.length > 0) this.forbidden_discards = [];
+
         return true;
     }    
     
@@ -230,6 +234,11 @@ class Player{
         };
         this.is_menzen = false;
         this.melds.push(meld_info);
+
+        // 喰い変えを防止する
+        let forbidden_cands = utils.getForbiddenTilesForMeld(hand_tiles, discard_tile, meld_type);
+        this.forbidden_discards = this.hands.filter(e => forbidden_cands.includes(e));
+
         return meld_info; 
     }
 

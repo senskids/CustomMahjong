@@ -114,9 +114,10 @@ class Player{
         // リーチ可能かチェック
         if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
-        if (utils.canAnkan(this.hands).length > 0) this.enable_actions.kan = true;
+        if (!this.is_riichi) { if (utils.canAnkan(this.hands).length > 0) this.enable_actions.kan = true; }
+        else { if (utils.canAnkanInRiichi(this.hands, this.melds, tile).length > 0) this.enable_actions.kan = true; }
         // 加槓できるかチェック
-        if (utils.canKakan(this.hands, this.melds).length > 0) this.enable_actions.kan = true;
+        if (utils.canKakan(this.hands, this.melds).length > 0 && !this.is_riichi) this.enable_actions.kan = true;
     }
 
 

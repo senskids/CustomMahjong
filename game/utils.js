@@ -164,6 +164,31 @@ exports.canAnkan = function(hands){
 
 
 /**
+ * 立直している時に暗槓できる候補を列挙する関数  
+ * 立直中は待ちが変わらない暗槓はできる
+ * @param {*} myhands    暗槓判定したいプレイヤーの手牌（タイルID表現） 
+ * @param {Array} mymelds         プレイヤーの鳴き牌（鳴き牌表現） 
+ * @param {Number} tsumo          ツモした牌のタイルID（ない場合null）
+ * @returns  暗槓出来る手牌の候補（タイルID表現、2次元配列なことに注意）  
+ * 例：[['s1','s1','s1','s1'],['s3','s3','s3','s3']]のように返す（実際はタイルID表現）          
+ */
+exports.canAnkanInRiichi = function(myhands, mymelds, tsumo){
+    const ankan_cands = exports.canAnkan(myhands);
+    const origin_winning_tiles = exports.getWinningTiles(myhands, mymelds, tsumo);  // 立直時の待ち牌
+    const ret = [];
+    for (var i = 0; i < ankan_cands.length; i++){
+        // 仮想暗槓する
+        let dummy_hands = myhands.filter(e => !(ankan_cands[i].includes(e)));
+        let dummy_melds = [...mymelds];
+        dummy_melds.push({ type: "ankan", from_who: null, discard: null, hands: [...ankan_cands[i]]});
+        let winning_tiles = exports.getWinningTiles(dummy_hands, dummy_melds, null);  // 仮想暗槓の待ち牌
+        if (origin_winning_tiles.length == winning_tiles.length && origin_winning_tiles.every((value, index) => value == winning_tiles[index])) ret.push([...ankan_cands[i]]);
+    }
+    return ret;
+}
+
+
+/**
  * 加槓できる候補を列挙する関数
  * @param {*} hands    加槓判定したいプレイヤーの手牌（タイルID表現） 
  * @param {*} melds    加槓判定したいプレイヤーの鳴き牌（鳴き牌表現） 
@@ -233,6 +258,24 @@ exports.canRon = function(myhands, mymelds, discard, seat_relation, field_info){
     const obj = getObj(field_info);
     const ret = Majiang.Util.hule(convert2Majiang(myhands, mymelds, null), d_tile, obj);
     return ret != undefined && ret.defen != 0;
+}
+
+
+/**
+ * 待ち牌のリストを取得する  
+ * 役無しの牌も含むことに注意
+ * @param {Array} myhands         プレイヤーの手牌、ツモ牌も含む（タイルID表現） 
+ * @param {Array} mymelds         プレイヤーの鳴き牌（鳴き牌表現） 
+ * @param {Number} tsumo          ツモした牌のタイルID（ない場合null）
+ * @returns {Array}      待ち牌のリスト（牌表現） 聴牌でない時は[]
+ */
+exports.getWinningTiles = function(myhands, mymelds, tsumo){
+    const hands = (tsumo == null)? myhands.slice(): myhands.slice(0, -1);
+    const shoupai = convert2Majiang(hands, mymelds, null);
+    const cands = Majiang.Util.tingpai(shoupai);
+    const xiangting_num = Majiang.Util.xiangting(shoupai);
+    if (xiangting_num == 0) return cands;
+    else return [];
 }
 
 

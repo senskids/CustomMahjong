@@ -33,7 +33,7 @@ class Player{
         this.is_riichi = false;
         /** 聴牌しているか */
         this.is_tenpai = false;
-        /** 現在、捨ててはいけない牌（タイルID表現） FIXME */
+        /** 現在、捨ててはいけない牌（タイルID表現） */
         this.forbidden_discards = [];
         /** 持ち時間  FIXME 実装していない */
         this.allotted_time = 10;
@@ -59,8 +59,21 @@ class Player{
         this.hands = [...tiles];
         this.melds = [];
         this.discards = [];
-        this.sortHands();
+        this.is_menzen = true;             
         this.is_riichi = false;
+        this.is_tenpai = false;
+        this.forbidden_discards = [];
+        this.enable_actions = {
+            discard: false, 
+            pon: false, 
+            chi: false, 
+            ron: false, 
+            riichi: false, 
+            kan: false, 
+            tsumo: false, 
+            skip: false,
+        };
+        this.sortHands();
     }
 
 
@@ -81,7 +94,7 @@ class Player{
     discardTile(tile){
         if (this.forbidden_discards.includes(tile)){
             console.log("[ERROR, discardTile, B] 捨ててはいけない牌を捨てようとした");
-            this.sendMsg('cannot-discard-tile', null);
+            this.sendMsg('cannot-discard-tile', tile);
             return false;
         }
         const idx = this.hands.indexOf(tile);
@@ -304,8 +317,9 @@ class Player{
      * 立直を実行する（内部を立直状態にする）
      * @param {Number} hand_tile   手牌から抜き出す牌（タイルID表現）
      */
-    performRiichi(){
+    performRiichi(hand_tile){
         this.is_riichi = true;
+        this.forbidden_discards = this.hands.filter(e => e != hand_tile);
         return;
     }
 

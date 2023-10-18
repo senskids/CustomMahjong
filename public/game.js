@@ -322,6 +322,10 @@ socket.on('select-riichi-cand', (data) => {
 });
 
 
+socket.on('cannot-discard-tile', (tile_id) => {
+    console.log(`[WARNING] you cannot discard the tile ${tile_id}`);
+});
+
 
 socket.on('game-status', (data) => {
     data.names.forEach((e, i)=>{

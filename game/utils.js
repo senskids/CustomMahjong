@@ -280,6 +280,33 @@ exports.getWinningTiles = function(myhands, mymelds, tsumo){
 
 
 /**
+ * 鳴いた際に捨ててはいけない牌のリストを取得する
+ * @param {Array} from_hands    手出し牌のリスト
+ * @param {Array} from_discard  捨て牌
+ * @param {String} meld_type    鳴きの種類（'pon', 'chi', 'kan'）のいずれか
+ * @returns {Array}  捨ててはいけない牌のリスト（タイルID表現）
+ */
+exports.getForbiddenTilesForMeld = function(from_hands, from_discard, meld_type){
+    if (meld_type == 'kan') return [];  // 1種につき4枚しかないので、喰い変えは発生しない
+    if (meld_type == 'pon') return [...Array(4)].map((_,i) => parseInt(from_discard / 4) * 4 + i);
+    if (from_hands.length != 2) console.log("[ERROR, utils.js, getForbiddenTilesForMeld] something wrong");
+    if (from_hands[0] > from_hands[1]) console.log("[ERROR, utils.js, getForbiddenTilesForMeld] something wrong");
+    let cands = [from_hands[0], from_hands[1], from_discard];
+    const tiles = cands.map((v,_) => (id2tile[v][1] == "0")? 5: parseInt(id2tile[v][1]));
+    if (tiles[1] - tiles[0] == 1){  
+        if ((tiles[2] - tiles[1] == 1) && tiles[0] != 1) cands.push(from_hands[0] - 4);  // [5, 6, 7] => [5, 6, 7, 4]
+        else if ((tiles[0] - tiles[2] == 1) && tiles[1] != 9) cands.push(from_hands[1] + 4);  // [5, 6, 4] => [5, 6, 4, 7]
+    }
+    let ret = [];
+    for (var i = 0; i < cands.length; i++){
+        let t = parseInt(cands[i] / 4) * 4;
+        ret = ret.concat([t, t+1, t+2, t+3]);
+    }
+    return ret;
+}
+
+
+/**
  * FIXME
  * あがり判定のための場の状況（風、ドラ、嶺上ツモ、海底ツモなど）のjsonを取得する
  * @param {JSON} field_info  FIXME　場の状況

@@ -822,7 +822,7 @@ class Mahjong {
         }
 
         // 立直宣言
-        player.performRiichi();
+        player.performRiichi(discard_tile);
         // this.double_riichi_chance
         this.discardTile(socket_id, discard_tile);
     }

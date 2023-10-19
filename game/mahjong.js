@@ -653,7 +653,7 @@ class Mahjong {
         let meld_info = this.players[p1].performKan(p2, hands, discard);
 
         // kans（フィールド全体のカン管理リスト）を更新する
-        this.kans.push({'player': p, 'from_who': p2});  
+        this.kans.push({'player': p1, 'from_who': p2});  
 
         // 手番を変更する
         this.cplayer_idx = p1;  

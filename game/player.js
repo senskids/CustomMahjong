@@ -27,6 +27,8 @@ class Player{
         this.tumogiris = [];
         /** 鳴牌（鳴き牌表現） */
         this.melds = [];
+        /** 局中（鳴かれた等関係なく）捨てた牌（牌表現） */
+        this.essence_discards = [];
         /** 面前かどうか */
         this.is_menzen = true;             
         /** リーチしているか */
@@ -35,6 +37,10 @@ class Player{
         this.is_tenpai = false;
         /** 現在、捨ててはいけない牌（タイルID表現） */
         this.forbidden_discards = [];
+        /** フリテン状態か否か */
+        this.is_furiten = false;
+        /** 一時的なフリテン状態か否か */
+        this.is_temporary_furiten = false;
         /** 持ち時間  FIXME 実装していない */
         this.allotted_time = 10;
         /** プレイヤーが現在可能なアクションの辞書 */
@@ -63,6 +69,8 @@ class Player{
         this.is_riichi = false;
         this.is_tenpai = false;
         this.forbidden_discards = [];
+        this.is_furiten = false;
+        this.is_temporary_furiten = false;
         this.enable_actions = {
             discard: false, 
             pon: false, 
@@ -106,13 +114,30 @@ class Player{
         this.hands.splice(idx, 1);
         this.sortHands();
         this.discards.push(tile);
+        this.essence_discards.push((utils.id2tile[tile][1] == "0")? `${utils.id2tile[tile][0]}5`: utils.id2tile[tile]);
 
         // 一時的な禁止捨牌を解除する
         if (!this.is_riichi && this.forbidden_discards.length > 0) this.forbidden_discards = [];
 
+        // フリテンの確認（立直してる場合は立直時にフリテン確認を行う）        
+        this.is_temporary_furiten = false;
+        if (!this.is_riichi) {
+            this.is_furiten = false;
+            // あがり牌を既に切っていればフリテン
+            const winning_tiles = utils.getWinningTiles(this.hands, this.melds, null);
+            if (winning_tiles.length > 0){
+                for(var i = 0; i < winning_tiles.length; i++) 
+                    if (this.essence_discards.includes(winning_tiles[i])) this.is_furiten = true;
+            }
+        }
+        // ツモあがりできたにも関わらず、牌を捨てた場合はフリテン
+        if (this.enable_actions.tsumo) {
+            this.is_temporary_furiten = true; 
+            if (this.is_riichi) this.is_furiten = true;
+        }
         return true;
     }    
-    
+
 
     /** FIXME field_info
      * seat_idの人がtileをツモした際に、enable_actionsを更新する
@@ -157,9 +182,15 @@ class Player{
         // カン出来るか判定
         if (utils.canKan(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.kan = true;
         // ロン出来るか判定
-        if (utils.canRon(this.hands, this.melds, tile, seat_relation, field_info) > 0) this.enable_actions.ron = true;
+        if (!this.is_furiten && !this.is_temporary_furiten && utils.canRon(this.hands, this.melds, tile, seat_relation, field_info)) this.enable_actions.ron = true;
         // 何かアクションを起こせるなら、スキップも押せるようにする  FIXME
         this.enable_actions.skip = this.canAnyAction();
+
+        // フリテンの更新（この捨牌に対してはロン可能）
+        if (this.enable_actions.ron) {
+            this.is_temporary_furiten = true; 
+            if (this.is_riichi) this.is_furiten = true;
+        }
     }
 
 
@@ -186,8 +217,14 @@ class Player{
      */
     checkEnableActionsForKan(seat_id, tile, is_ankan){
         this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        if (this.is_furiten || this.is_temporary_furiten) return;
         // if (utils.canRon(this.hands, this.melds, seat_relation, tile, field_info) > 0) this.enable_actions.ron = true;
         console.log("[checkEnableActionsForKakanTile] not implemented");
+        // フリテンの更新（この捨牌に対してはロン可能）
+        if (this.enable_actions.ron) {
+            this.is_temporary_furiten = true; 
+            if (this.is_riichi) this.is_furiten = true;
+        }
     }
 
 
@@ -328,7 +365,13 @@ class Player{
      */
     performRiichi(hand_tile){
         this.is_riichi = true;
+        // ツモ牌以外切れなくする
         this.forbidden_discards = this.hands.filter(e => e != hand_tile);
+        // フリテンの確認
+        this.is_furiten = false;
+        const winning_tiles = utils.getWinningTiles(this.hands.filter(e => e != hand_tile), this.melds, null);
+        for(var i = 0; i < winning_tiles.length; i++) 
+            if (this.essence_discards.includes(winning_tiles[i])) this.is_furiten = true;
         return;
     }
 

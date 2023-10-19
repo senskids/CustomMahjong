@@ -291,8 +291,8 @@ exports.getForbiddenTilesForMeld = function(from_hands, from_discard, meld_type)
     if (meld_type == 'pon') return [...Array(4)].map((_,i) => parseInt(from_discard / 4) * 4 + i);
     if (from_hands.length != 2) console.log("[ERROR, utils.js, getForbiddenTilesForMeld] something wrong");
     if (from_hands[0] > from_hands[1]) console.log("[ERROR, utils.js, getForbiddenTilesForMeld] something wrong");
-    let cands = [from_hands[0], from_hands[1], from_discard];
-    const tiles = cands.map((v,_) => (id2tile[v][1] == "0")? 5: parseInt(id2tile[v][1]));
+    let cands = [from_discard];
+    const tiles = [from_hands[0], from_hands[1], from_discard].map((v,_) => (id2tile[v][1] == "0")? 5: parseInt(id2tile[v][1]));
     if (tiles[1] - tiles[0] == 1){  
         if ((tiles[2] - tiles[1] == 1) && tiles[0] != 1) cands.push(from_hands[0] - 4);  // [5, 6, 7] => [5, 6, 7, 4]
         else if ((tiles[0] - tiles[2] == 1) && tiles[1] != 9) cands.push(from_hands[1] + 4);  // [5, 6, 4] => [5, 6, 4, 7]

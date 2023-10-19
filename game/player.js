@@ -65,6 +65,7 @@ class Player{
         this.hands = [...tiles];
         this.melds = [];
         this.discards = [];
+        this.essence_discards = [];
         this.is_menzen = true;             
         this.is_riichi = false;
         this.is_tenpai = false;

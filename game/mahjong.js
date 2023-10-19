@@ -643,7 +643,7 @@ class Mahjong {
      */
     performKan(socket_id, p1, p2, discard, hands) {
         // 正しい人が正しい鳴きをしようとしているかチェックする
-        if (!this.#checkLegalActionForDiscardMeld(socket_id, p1, p2, discard, 'chi')) return;
+        if (!this.#checkLegalActionForDiscardMeld(socket_id, p1, p2, discard, 'kan')) return;
 
         // 河から牌を抜く
         discard = this.players[p2].getDiscards().pop();  

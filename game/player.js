@@ -54,7 +54,8 @@ class Player{
             riichi: false, 
             kan: false, 
             tsumo: false, 
-            skip: false,      // FIXME 九種九牌なども
+            drawn: false,   // 九種九牌
+            skip: false,    
         };
     }
 
@@ -155,6 +156,8 @@ class Player{
         else { if (utils.canAnkanInRiichi(this.hands, this.melds, tile).length > 0) this.enable_actions.kan = true; }
         // 加槓できるかチェック
         if (utils.canKakan(this.hands, this.melds).length > 0 && !this.is_riichi) this.enable_actions.kan = true;
+        // 九種九牌できるかチェック
+        if (this.is_first_turn && utils.canNineDiffTerminalTiles(this.hands)) this.enable_actions.drawn = true;
     }
 
 
@@ -468,7 +471,7 @@ class Player{
         return (seat_id - this.seat + 4) % 4;
     }
     resetEnableActions(){
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, drawn: false, skip: false};
     }
 
     /////////////////////////////////////////////

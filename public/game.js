@@ -16,8 +16,8 @@ const idx2player_map = ['my', 'right', 'opposite', 'left'];
 // ゲーム画面の要素を取得
 const gameEl = document.querySelector('#field');
 const gameStartBtn = document.querySelector('#game-start-btn');
-const actions = ['chi', 'pon', 'kan', 'ron', 'riichi', 'tsumo', 'skip'];
-const action_JPs = {'chi': "チー", 'pon': "ポン", 'kan': "カン", 'ron': "ロン", 'riichi': "リーチ", 'tsumo': "ツモ", 'skip': "スキップ"};
+const actions = ['chi', 'pon', 'kan', 'ron', 'riichi', 'tsumo', 'drawn', 'skip'];
+const action_JPs = {'chi': "チー", 'pon': "ポン", 'kan': "カン", 'ron': "ロン", 'riichi': "リーチ", 'tsumo': "ツモ", 'drawn': "九種九牌流局", 'skip': "スキップ"};
 const actionBtns = {};
 actions.forEach(action => {
     actionBtns[action] = document.getElementById(`${action}-btn`);

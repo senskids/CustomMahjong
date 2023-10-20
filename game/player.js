@@ -29,12 +29,16 @@ class Player{
         this.melds = [];
         /** 局中（鳴かれた等関係なく）捨てた牌（牌表現） */
         this.essence_discards = [];
+        /** 1順目か否か（鳴きで消失） */
+        this.is_first_turn = true;
         /** 面前かどうか */
         this.is_menzen = true;             
-        /** リーチしているか */
-        this.is_riichi = false;
         /** 聴牌しているか */
         this.is_tenpai = false;
+        /** リーチしているか */
+        this.is_riichi = false;
+        /** 一発状態にあるかどうか */
+        this.is_oneshot = false;
         /** 現在、捨ててはいけない牌（タイルID表現） */
         this.forbidden_discards = [];
         /** フリテン状態か否か */
@@ -52,7 +56,8 @@ class Player{
             riichi: false, 
             kan: false, 
             tsumo: false, 
-            skip: false,      // FIXME 九種九牌なども
+            drawn: false,   // 九種九牌
+            skip: false,    
         };
     }
 
@@ -66,22 +71,15 @@ class Player{
         this.melds = [];
         this.discards = [];
         this.essence_discards = [];
+        this.is_first_turn = true;
         this.is_menzen = true;             
-        this.is_riichi = false;
         this.is_tenpai = false;
+        this.is_riichi = false;
+        this.is_oneshot = false;
         this.forbidden_discards = [];
         this.is_furiten = false;
         this.is_temporary_furiten = false;
-        this.enable_actions = {
-            discard: false, 
-            pon: false, 
-            chi: false, 
-            ron: false, 
-            riichi: false, 
-            kan: false, 
-            tsumo: false, 
-            skip: false,
-        };
+        this.resetEnableActions();
         this.sortHands();
     }
 
@@ -97,10 +95,11 @@ class Player{
 
     /**
      * 手牌からtileを捨てる
-     * @param {Array} tile  捨てる牌（タイルID表現）
+     * @param {Array} tile              捨てる牌（タイルID表現）
+     * @param {Boolean} is_riichi_turn  立直したターンかどうか
      * @returns 正しく捨てられたか否か
      */
-    discardTile(tile){
+    discardTile(tile, is_riichi_turn = false){
         if (this.forbidden_discards.includes(tile)){
             console.log("[ERROR, discardTile, B] 捨ててはいけない牌を捨てようとした");
             this.sendMsg('cannot-discard-tile', tile);
@@ -119,6 +118,8 @@ class Player{
 
         // 一時的な禁止捨牌を解除する
         if (!this.is_riichi && this.forbidden_discards.length > 0) this.forbidden_discards = [];
+        // 一発判定
+        if (!is_riichi_turn) this.is_oneshot = false;
 
         // フリテンの確認（立直してる場合は立直時にフリテン確認を行う）        
         this.is_temporary_furiten = false;
@@ -147,7 +148,7 @@ class Player{
      */
     checkEnableActionsForDrawTile(seat_id, tile, field_info = null){
         // 何もできないで初期化
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         // 自分のツモじゃなかったらreturn
         if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
         // 捨てることは絶対できる
@@ -157,10 +158,12 @@ class Player{
         // リーチ可能かチェック
         if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
-        if (!this.is_riichi) { if (utils.canAnkan(this.hands).length > 0) this.enable_actions.kan = true; }
-        else { if (utils.canAnkanInRiichi(this.hands, this.melds, tile).length > 0) this.enable_actions.kan = true; }
+        if (!this.is_riichi) { if (utils.canAnkan(this.hands).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true; }
+        else { if (utils.canAnkanInRiichi(this.hands, this.melds, tile).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true; }
         // 加槓できるかチェック
-        if (utils.canKakan(this.hands, this.melds).length > 0 && !this.is_riichi) this.enable_actions.kan = true;
+        if (utils.canKakan(this.hands, this.melds).length > 0 && !this.is_riichi && field_info["kan_num"] < 4) this.enable_actions.kan = true;
+        // 九種九牌できるかチェック
+        if (this.is_first_turn && utils.canNineDiffTerminalTiles(this.hands)) this.enable_actions.drawn = true;
     }
 
 
@@ -172,16 +175,19 @@ class Player{
     checkEnableActionsForDiscardTile(seat_id, tile, field_info = null){
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         // 初期状態として何もしてはいけないをセット
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         if (this.is_riichi) field_info.hupai.riichi = 1;
         // 自分が捨てた場合はreturn
-        if (seat_relation == 0) return;     
+        if (seat_relation == 0) { 
+            this.is_first_turn = false;
+            return;
+        }
         // 上家が捨てた場合のみ、チー出来るか判定
         if (seat_relation == 3) if (utils.canChi(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.chi = true;
         // ポン出来るか判定
         if (utils.canPon(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.pon = true;
         // カン出来るか判定
-        if (utils.canKan(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.kan = true;
+        if (utils.canKan(this.hands, tile).length > 0 && !this.is_riichi && field_info["kan_num"] < 4) this.enable_actions.kan = true;
         // ロン出来るか判定
         if (!this.is_furiten && !this.is_temporary_furiten && utils.canRon(this.hands, this.melds, tile, seat_relation, field_info)) this.enable_actions.ron = true;
         // 何かアクションを起こせるなら、スキップも押せるようにする  FIXME
@@ -204,7 +210,9 @@ class Player{
      */
     checkEnableActionsForMeld(p1_seat_id, p2_seat_id, discard, hands){
         const seat_relation = this.getSeatRelationFromSeatId(p1_seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
+        this.is_first_turn = false;
+        this.is_oneshot = false;
         if (seat_relation == 0) this.enable_actions.discard = true;
         return;
     }    
@@ -217,7 +225,7 @@ class Player{
      * @param {Boolean} is_ankan  暗槓かどうか（暗槓の場合、国士無双だけできる）
      */
     checkEnableActionsForKan(seat_id, tile, is_ankan){
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         if (this.is_furiten || this.is_temporary_furiten) return;
         // if (utils.canRon(this.hands, this.melds, seat_relation, tile, field_info) > 0) this.enable_actions.ron = true;
         console.log("[checkEnableActionsForKakanTile] not implemented");
@@ -237,7 +245,7 @@ class Player{
      */
     checkEnableActionsForDrawReplacementTile(seat_id, tile, kan_type, field_info = null){
         // 何もできないで初期化
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         // 自分のツモじゃなかったらreturn
         if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
         // 捨てることは絶対できる
@@ -248,9 +256,9 @@ class Player{
         // リーチ可能かチェック
         if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
-        if (utils.canAnkan(this.hands).length > 0) this.enable_actions.kan = true;
+        if (utils.canAnkan(this.hands).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true;
         // 加槓できるかチェック
-        if (utils.canKakan(this.hands, this.melds).length > 0) this.enable_actions.kan = true;
+        if (utils.canKakan(this.hands, this.melds).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true;
     }
 
 
@@ -366,6 +374,7 @@ class Player{
      */
     performRiichi(hand_tile){
         this.is_riichi = true;
+        this.is_oneshot = true;
         // ツモ牌以外切れなくする
         this.forbidden_discards = this.hands.filter(e => e != hand_tile);
         // フリテンの確認
@@ -395,6 +404,15 @@ class Player{
     getMelds(){
         return this.melds;
     };    
+    getEssenceDiscards(){
+        return this.essence_discards;
+    }
+    getIsFirstTurn(){
+        return this.is_first_turn;
+    }
+    getIsRiichi(){
+        return this.is_riichi;
+    }
     getSocketId(){
         return this.socket_id;
     }
@@ -462,6 +480,9 @@ class Player{
     // 自分からみてseat_idの人は自分(0)、下家(1)、対面(2)、上家(3)かを取得する
     getSeatRelationFromSeatId(seat_id){
         return (seat_id - this.seat + 4) % 4;
+    }
+    resetEnableActions(){
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, drawn: false, skip: false};
     }
 
     /////////////////////////////////////////////

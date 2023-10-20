@@ -250,7 +250,8 @@ class Mahjong {
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
-        this.tiles = debug.createTenhoTiles();
+        // this.tiles = debug.createTenhoTiles();
+        // this.tiles = debug.createAllRiichiTiles();
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
@@ -262,6 +263,8 @@ class Mahjong {
         this.tiles = this.tiles.slice(13);
         // ドラ表示
         this.dora = [this.tiles.pop()];
+        // カンの初期化
+        this.kans = [];  
 
         // 全ユーザに状態を送る
         for(var i = 0; i < 4; i++){
@@ -317,11 +320,12 @@ class Mahjong {
 
     /**
      * socket_idのプレイヤーがdiscard_tileを捨てる
-     * @param {String} socket_id     捨てるプレイヤーのsocket_id
-     * @param {Number} discard_tile  捨牌のタイルID表現 
+     * @param {String} socket_id        捨てるプレイヤーのsocket_id
+     * @param {Number} discard_tile     捨牌のタイルID表現 
+     * @param {Boolean} is_riichi_turn  立直したターンかどうか
      * @next moveNext or selectDeclaredAction
      */
-    discardTile(socket_id, discard_tile){
+    discardTile(socket_id, discard_tile, is_riichi_turn = false){
         // socket_idのプレイヤーがdiscard_tileを捨てる
         const p = this.#whoAction(socket_id);
         if (!this.players[p].getEnableActions().discard) {
@@ -329,13 +333,21 @@ class Mahjong {
             return;
         }
 
-        let actRes = this.players[p].discardTile(discard_tile);
+        let actRes = this.players[p].discardTile(discard_tile, is_riichi_turn);
         // 何かしら問題があって牌を捨てる行為に失敗した場合はreturn
         if (!actRes) return;
 
+        // 四風連打の処理
+        if (this.#checkSufurenda()){
+            for(var i = 0; i < 4; i++) this.players[i].resetEnableActions();
+            this.sendDiscardMsgToAll(p, discard_tile);
+            setTimeout(this.drawnGame.bind(this), 10, true);  // 流局
+            return;
+        }
+
         // player pがdiscard_tileを捨てたことに対し、全ユーザのEnableActionsを更新
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForDiscardTile(p, discard_tile, this.getFieldInfo()); 
-        
+
         // 他プレイヤーからの宣言受け入れの準備
         this.declare_queue = [];           // プレイヤーからの宣言を貯めておくqueue
         this.can_declare_action = true;    // プレイヤーからの宣言を受け入れる状態にする
@@ -352,22 +364,34 @@ class Mahjong {
         }
 
         if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
-            this.timeout_id = setTimeout(this.moveNext.bind(this), waiting_time);
+            this.timeout_id = setTimeout(this.moveNext.bind(this), waiting_time, is_riichi_turn);
         }
         else {   // 誰かが宣言する権利を持っているので、宣言可能時間を確保する
-            this.next_process_info = {"func": this.moveNext, "opt": null};
+            this.next_process_info = {"func": this.moveNext, "opt": {"is_riichi_turn":is_riichi_turn}};
             this.timeout_id = setTimeout(this.selectDeclaredAction.bind(this), waiting_time);
         }
     }
 
 
-    /** FIXME プレイヤーが立直宣言していたら点棒を渡す処理を追加する
+    /** 
      * ターンプレイヤーを次のプレイヤーに切り替える  
      * 流局判定もここで行う
+     * @param {Boolean} is_riichi_turn  cplayer_idxが今立直したかどうか
      * @next drawTile or drawnGame
      */
-    moveNext(){
+    moveNext(is_riichi_turn = false){
         if (this.tiles.length > 0) {
+            // ターンプレイヤーが今立直したかどうかチェック
+            if (is_riichi_turn) {
+                // FIXME : 点棒を供託に出す処理
+
+                // 4人立直流局チェック
+                let riichis = [...Array(4)].map((_,i) => this.players[i].getIsRiichi());
+                if (riichis.every(v=>v)){  // 全員が流局している
+                    setTimeout(this.drawnGame.bind(this), 10);  // 流局
+                    return;
+                }
+            }
             this.cplayer_idx = (this.cplayer_idx + 1) % this.players.length;
             setTimeout(this.drawTile.bind(this), 10);
         }
@@ -413,6 +437,10 @@ class Mahjong {
             if (utils.canTsumo(player.getHands(), player.getMelds(), player.getHands()[player.getHands().length - 1], this.getFieldInfo()))
                 this.performTsumo(socket_id); 
         }
+        else if (action_type == 'drawn'){
+            if (utils.canNineDiffTerminalTiles(player.getHands()))
+                this.drawnGame(true);
+        }
         return;
     }
 
@@ -453,7 +481,7 @@ class Mahjong {
                 this.can_declare_action = false;
                 clearTimeout(this.timeout_id);
                 if (this.next_process_info.func === this.moveNext)
-                    this.timeout_id = setTimeout(this.moveNext.bind(this), 10);
+                    this.timeout_id = setTimeout(this.moveNext.bind(this), 10, this.next_process_info["opt"]["is_riichi_turn"]);
                 else 
                     this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, this.next_process_info["opt"]);
             }
@@ -488,7 +516,7 @@ class Mahjong {
         // declare_queueに何も入っていないなら、次にすべきアクションを実行する
         if (this.declare_queue.length == 0){
             if (this.next_process_info.func === this.moveNext)
-                this.timeout_id = setTimeout(this.moveNext.bind(this), 10);
+                this.timeout_id = setTimeout(this.moveNext.bind(this), 10, this.next_process_info["opt"]["is_riichi_turn"]);
             else 
                 this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, this.next_process_info["opt"]);
             return;
@@ -772,9 +800,8 @@ class Mahjong {
         // 槍槓ロンを無効にする
         this.can_declare_action = false; 
 
-        // 4回槓された際の流局判定
-        if (this.kans.length == 4) {
-            // 全員が同じプレイヤーだったら続行する (5枚目のカンはどうする？） FIXME
+        // 4回槓された際の流局判定（2人以上がカンしている時は流局、1人で4カンは続行）
+        if (this.kans.length == 4 && !this.kans.every(item => item['player'] == this.kans[0]['player'])) {
             setTimeout(this.drawnGame.bind(this), 2000, [], true)
             return; 
         }
@@ -824,7 +851,7 @@ class Mahjong {
         // 立直宣言
         player.performRiichi(discard_tile);
         // this.double_riichi_chance
-        this.discardTile(socket_id, discard_tile);
+        this.discardTile(socket_id, discard_tile, true);
     }
 
 
@@ -899,7 +926,8 @@ class Mahjong {
             jicun: {
                 changbang:  this.honba_count,      // 積み棒の本数
                 lizhibang:  0                      // 立直棒の本数   // FIXME
-            }
+            },
+            kan_num:        this.kans.length       // フィールドのカンの数
         }
     }
 
@@ -920,6 +948,20 @@ class Mahjong {
         }
         console.log("[Error, whoAction, A] socket_id : %s", socket_id);
         return -1;
+    }
+
+
+    /**
+     * 四風連打かどうかを判定する
+     * @returns {Boolean}
+     */
+    #checkSufurenda(){
+        if (this.cplayer_idx == 3 && this.players[this.cplayer_idx].getIsFirstTurn() && this.tiles.length == 136 - (14 * 4) - 14){
+            let essences = [...Array(4)].map((_,i) => this.players[i].getEssenceDiscards()[0]);
+            if (["z1", "z2", "z3", "z4"].includes(essences[0]) && essences.every(item => item === essences[0]))
+                return true;
+        }
+        return false;
     }
 
 

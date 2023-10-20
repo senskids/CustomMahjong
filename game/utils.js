@@ -262,6 +262,21 @@ exports.canRon = function(myhands, mymelds, discard, seat_relation, field_info){
 
 
 /**
+ * 九種九牌宣言できるか確認する
+ * @param {Array} hands  プレイヤーの手牌、ツモ牌も含む（タイルID表現） 
+ * @return {Boolean} 
+ */
+exports.canNineDiffTerminalTiles = function(hands){
+    const tgts = ["m1", "m9", "s1", "s9", "p1", "p9", "z1", "z2", "z3", "z4", "z5", "z6", "z7"];
+    const cands = [];
+    for (var i = 0; i < hands.length; i++) {
+        if (tgts.includes(id2tile[hands[i]]) && !cands.includes(id2tile[hands[i]])) cands.push(id2tile[hands[i]]);
+    }
+    return cands.length >= 9;
+}
+
+
+/**
  * 待ち牌のリストを取得する  
  * 役無しの牌も含むことに注意
  * @param {Array} myhands         プレイヤーの手牌、ツモ牌も含む（タイルID表現） 

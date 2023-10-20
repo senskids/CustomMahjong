@@ -37,3 +37,16 @@ exports.createNineDiffTerminalTiles = function(){
     }
     return tiles;
 }
+
+
+// 4カン確認用
+exports.createFourKanTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    tiles[62] = 13;
+    tiles[63] = 14;
+    tiles[64] = 15;
+    tiles[13] = 62;
+    tiles[14] = 63;
+    tiles[15] = 64;
+    return tiles;
+}

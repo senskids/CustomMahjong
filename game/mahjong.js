@@ -251,7 +251,7 @@ class Mahjong {
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
         // this.tiles = debug.createTenhoTiles();
-        this.tiles = debug.createNineDiffTerminalTiles();
+        // this.tiles = debug.createFourKanTiles();
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
@@ -263,6 +263,8 @@ class Mahjong {
         this.tiles = this.tiles.slice(13);
         // ドラ表示
         this.dora = [this.tiles.pop()];
+        // カンの初期化
+        this.kans = [];  
 
         // 全ユーザに状態を送る
         for(var i = 0; i < 4; i++){
@@ -785,9 +787,8 @@ class Mahjong {
         // 槍槓ロンを無効にする
         this.can_declare_action = false; 
 
-        // 4回槓された際の流局判定
-        if (this.kans.length == 4) {
-            // 全員が同じプレイヤーだったら続行する (5枚目のカンはどうする？） FIXME
+        // 4回槓された際の流局判定（2人以上がカンしている時は流局、1人で4カンは続行）
+        if (this.kans.length == 4 && !this.kans.every(item => item['player'] == this.kans[0]['player'])) {
             setTimeout(this.drawnGame.bind(this), 2000, [], true)
             return; 
         }
@@ -912,7 +913,8 @@ class Mahjong {
             jicun: {
                 changbang:  this.honba_count,      // 積み棒の本数
                 lizhibang:  0                      // 立直棒の本数   // FIXME
-            }
+            },
+            kan_num:        this.kans.length       // フィールドのカンの数
         }
     }
 

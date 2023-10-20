@@ -50,3 +50,20 @@ exports.createFourKanTiles = function(){
     tiles[15] = 64;
     return tiles;
 }
+
+
+// 4人全員立直確認用
+exports.createAllRiichiTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    let inits = [
+        [ 0,  1,  2,  4,  5,  6,  8,  9, 10, 16, 17, 18, 130],
+        [36, 37, 38, 40, 41, 42, 44, 45, 46, 52, 53, 54, 131],
+        [72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84],
+        [71, 70, 69, 31, 30, 29, 27, 26, 25, 23, 61, 62, 63]
+    ];
+    for (var p = 0; p < 4; p++){
+        for (var i = 0; i < 13; i++)
+            tiles[p * 13 + i] = inits[p][i];
+    }
+    return tiles;
+}

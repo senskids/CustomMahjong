@@ -33,10 +33,12 @@ class Player{
         this.is_first_turn = true;
         /** 面前かどうか */
         this.is_menzen = true;             
-        /** リーチしているか */
-        this.is_riichi = false;
         /** 聴牌しているか */
         this.is_tenpai = false;
+        /** リーチしているか */
+        this.is_riichi = false;
+        /** 一発状態にあるかどうか */
+        this.is_oneshot = false;
         /** 現在、捨ててはいけない牌（タイルID表現） */
         this.forbidden_discards = [];
         /** フリテン状態か否か */
@@ -71,8 +73,9 @@ class Player{
         this.essence_discards = [];
         this.is_first_turn = true;
         this.is_menzen = true;             
-        this.is_riichi = false;
         this.is_tenpai = false;
+        this.is_riichi = false;
+        this.is_oneshot = false;
         this.forbidden_discards = [];
         this.is_furiten = false;
         this.is_temporary_furiten = false;
@@ -92,10 +95,11 @@ class Player{
 
     /**
      * 手牌からtileを捨てる
-     * @param {Array} tile  捨てる牌（タイルID表現）
+     * @param {Array} tile              捨てる牌（タイルID表現）
+     * @param {Boolean} is_riichi_turn  立直したターンかどうか
      * @returns 正しく捨てられたか否か
      */
-    discardTile(tile){
+    discardTile(tile, is_riichi_turn = false){
         if (this.forbidden_discards.includes(tile)){
             console.log("[ERROR, discardTile, B] 捨ててはいけない牌を捨てようとした");
             this.sendMsg('cannot-discard-tile', tile);
@@ -114,6 +118,8 @@ class Player{
 
         // 一時的な禁止捨牌を解除する
         if (!this.is_riichi && this.forbidden_discards.length > 0) this.forbidden_discards = [];
+        // 一発判定
+        if (!is_riichi_turn) this.is_oneshot = false;
 
         // フリテンの確認（立直してる場合は立直時にフリテン確認を行う）        
         this.is_temporary_furiten = false;
@@ -206,6 +212,7 @@ class Player{
         const seat_relation = this.getSeatRelationFromSeatId(p1_seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         this.resetEnableActions();
         this.is_first_turn = false;
+        this.is_oneshot = false;
         if (seat_relation == 0) this.enable_actions.discard = true;
         return;
     }    
@@ -367,6 +374,7 @@ class Player{
      */
     performRiichi(hand_tile){
         this.is_riichi = true;
+        this.is_oneshot = true;
         // ツモ牌以外切れなくする
         this.forbidden_discards = this.hands.filter(e => e != hand_tile);
         // フリテンの確認
@@ -401,6 +409,9 @@ class Player{
     }
     getIsFirstTurn(){
         return this.is_first_turn;
+    }
+    getIsRiichi(){
+        return this.is_riichi;
     }
     getSocketId(){
         return this.socket_id;

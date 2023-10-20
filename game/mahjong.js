@@ -251,7 +251,7 @@ class Mahjong {
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
         // this.tiles = debug.createTenhoTiles();
-        // this.tiles = debug.createFourKanTiles();
+        // this.tiles = debug.createAllRiichiTiles();
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
@@ -320,11 +320,12 @@ class Mahjong {
 
     /**
      * socket_idのプレイヤーがdiscard_tileを捨てる
-     * @param {String} socket_id     捨てるプレイヤーのsocket_id
-     * @param {Number} discard_tile  捨牌のタイルID表現 
+     * @param {String} socket_id        捨てるプレイヤーのsocket_id
+     * @param {Number} discard_tile     捨牌のタイルID表現 
+     * @param {Boolean} is_riichi_turn  立直したターンかどうか
      * @next moveNext or selectDeclaredAction
      */
-    discardTile(socket_id, discard_tile){
+    discardTile(socket_id, discard_tile, is_riichi_turn = false){
         // socket_idのプレイヤーがdiscard_tileを捨てる
         const p = this.#whoAction(socket_id);
         if (!this.players[p].getEnableActions().discard) {
@@ -332,7 +333,7 @@ class Mahjong {
             return;
         }
 
-        let actRes = this.players[p].discardTile(discard_tile);
+        let actRes = this.players[p].discardTile(discard_tile, is_riichi_turn);
         // 何かしら問題があって牌を捨てる行為に失敗した場合はreturn
         if (!actRes) return;
 
@@ -363,22 +364,34 @@ class Mahjong {
         }
 
         if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
-            this.timeout_id = setTimeout(this.moveNext.bind(this), waiting_time);
+            this.timeout_id = setTimeout(this.moveNext.bind(this), waiting_time, is_riichi_turn);
         }
         else {   // 誰かが宣言する権利を持っているので、宣言可能時間を確保する
-            this.next_process_info = {"func": this.moveNext, "opt": null};
+            this.next_process_info = {"func": this.moveNext, "opt": {"is_riichi_turn":is_riichi_turn}};
             this.timeout_id = setTimeout(this.selectDeclaredAction.bind(this), waiting_time);
         }
     }
 
 
-    /** FIXME プレイヤーが立直宣言していたら点棒を渡す処理を追加する
+    /** 
      * ターンプレイヤーを次のプレイヤーに切り替える  
      * 流局判定もここで行う
+     * @param {Boolean} is_riichi_turn  cplayer_idxが今立直したかどうか
      * @next drawTile or drawnGame
      */
-    moveNext(){
+    moveNext(is_riichi_turn = false){
         if (this.tiles.length > 0) {
+            // ターンプレイヤーが今立直したかどうかチェック
+            if (is_riichi_turn) {
+                // FIXME : 点棒を供託に出す処理
+
+                // 4人立直流局チェック
+                let riichis = [...Array(4)].map((_,i) => this.players[i].getIsRiichi());
+                if (riichis.every(v=>v)){  // 全員が流局している
+                    setTimeout(this.drawnGame.bind(this), 10);  // 流局
+                    return;
+                }
+            }
             this.cplayer_idx = (this.cplayer_idx + 1) % this.players.length;
             setTimeout(this.drawTile.bind(this), 10);
         }
@@ -468,7 +481,7 @@ class Mahjong {
                 this.can_declare_action = false;
                 clearTimeout(this.timeout_id);
                 if (this.next_process_info.func === this.moveNext)
-                    this.timeout_id = setTimeout(this.moveNext.bind(this), 10);
+                    this.timeout_id = setTimeout(this.moveNext.bind(this), 10, this.next_process_info["opt"]["is_riichi_turn"]);
                 else 
                     this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, this.next_process_info["opt"]);
             }
@@ -503,7 +516,7 @@ class Mahjong {
         // declare_queueに何も入っていないなら、次にすべきアクションを実行する
         if (this.declare_queue.length == 0){
             if (this.next_process_info.func === this.moveNext)
-                this.timeout_id = setTimeout(this.moveNext.bind(this), 10);
+                this.timeout_id = setTimeout(this.moveNext.bind(this), 10, this.next_process_info["opt"]["is_riichi_turn"]);
             else 
                 this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), 10, this.next_process_info["opt"]);
             return;
@@ -838,7 +851,7 @@ class Mahjong {
         // 立直宣言
         player.performRiichi(discard_tile);
         // this.double_riichi_chance
-        this.discardTile(socket_id, discard_tile);
+        this.discardTile(socket_id, discard_tile, true);
     }
 
 

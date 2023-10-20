@@ -29,6 +29,8 @@ class Player{
         this.melds = [];
         /** 局中（鳴かれた等関係なく）捨てた牌（牌表現） */
         this.essence_discards = [];
+        /** 1順目か否か（鳴きで消失） */
+        this.is_first_turn = true;
         /** 面前かどうか */
         this.is_menzen = true;             
         /** リーチしているか */
@@ -66,22 +68,14 @@ class Player{
         this.melds = [];
         this.discards = [];
         this.essence_discards = [];
+        this.is_first_turn = true;
         this.is_menzen = true;             
         this.is_riichi = false;
         this.is_tenpai = false;
         this.forbidden_discards = [];
         this.is_furiten = false;
         this.is_temporary_furiten = false;
-        this.enable_actions = {
-            discard: false, 
-            pon: false, 
-            chi: false, 
-            ron: false, 
-            riichi: false, 
-            kan: false, 
-            tsumo: false, 
-            skip: false,
-        };
+        this.resetEnableActions();
         this.sortHands();
     }
 
@@ -147,7 +141,7 @@ class Player{
      */
     checkEnableActionsForDrawTile(seat_id, tile, field_info = null){
         // 何もできないで初期化
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         // 自分のツモじゃなかったらreturn
         if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
         // 捨てることは絶対できる
@@ -172,10 +166,13 @@ class Player{
     checkEnableActionsForDiscardTile(seat_id, tile, field_info = null){
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         // 初期状態として何もしてはいけないをセット
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         if (this.is_riichi) field_info.hupai.riichi = 1;
         // 自分が捨てた場合はreturn
-        if (seat_relation == 0) return;     
+        if (seat_relation == 0) { 
+            this.is_first_turn = false;
+            return;
+        }
         // 上家が捨てた場合のみ、チー出来るか判定
         if (seat_relation == 3) if (utils.canChi(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.chi = true;
         // ポン出来るか判定
@@ -204,7 +201,8 @@ class Player{
      */
     checkEnableActionsForMeld(p1_seat_id, p2_seat_id, discard, hands){
         const seat_relation = this.getSeatRelationFromSeatId(p1_seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
+        this.is_first_turn = false;
         if (seat_relation == 0) this.enable_actions.discard = true;
         return;
     }    
@@ -217,7 +215,7 @@ class Player{
      * @param {Boolean} is_ankan  暗槓かどうか（暗槓の場合、国士無双だけできる）
      */
     checkEnableActionsForKan(seat_id, tile, is_ankan){
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         if (this.is_furiten || this.is_temporary_furiten) return;
         // if (utils.canRon(this.hands, this.melds, seat_relation, tile, field_info) > 0) this.enable_actions.ron = true;
         console.log("[checkEnableActionsForKakanTile] not implemented");
@@ -237,7 +235,7 @@ class Player{
      */
     checkEnableActionsForDrawReplacementTile(seat_id, tile, kan_type, field_info = null){
         // 何もできないで初期化
-        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
+        this.resetEnableActions();
         // 自分のツモじゃなかったらreturn
         if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
         // 捨てることは絶対できる
@@ -395,6 +393,12 @@ class Player{
     getMelds(){
         return this.melds;
     };    
+    getEssenceDiscards(){
+        return this.essence_discards;
+    }
+    getIsFirstTurn(){
+        return this.is_first_turn;
+    }
     getSocketId(){
         return this.socket_id;
     }
@@ -462,6 +466,9 @@ class Player{
     // 自分からみてseat_idの人は自分(0)、下家(1)、対面(2)、上家(3)かを取得する
     getSeatRelationFromSeatId(seat_id){
         return (seat_id - this.seat + 4) % 4;
+    }
+    resetEnableActions(){
+        this.enable_actions = {discard: false, pon: false, chi: false, ron: false, riichi: false, kan: false, tsumo: false, skip: false};
     }
 
     /////////////////////////////////////////////

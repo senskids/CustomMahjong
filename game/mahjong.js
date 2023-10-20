@@ -333,9 +333,17 @@ class Mahjong {
         // 何かしら問題があって牌を捨てる行為に失敗した場合はreturn
         if (!actRes) return;
 
+        // 四風連打の処理
+        if (this.#checkSufurenda()){
+            for(var i = 0; i < 4; i++) this.players[i].resetEnableActions();
+            this.sendDiscardMsgToAll(p, discard_tile);
+            setTimeout(this.drawnGame.bind(this), 10, true);  // 流局
+            return;
+        }
+
         // player pがdiscard_tileを捨てたことに対し、全ユーザのEnableActionsを更新
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForDiscardTile(p, discard_tile, this.getFieldInfo()); 
-        
+
         // 他プレイヤーからの宣言受け入れの準備
         this.declare_queue = [];           // プレイヤーからの宣言を貯めておくqueue
         this.can_declare_action = true;    // プレイヤーからの宣言を受け入れる状態にする
@@ -920,6 +928,20 @@ class Mahjong {
         }
         console.log("[Error, whoAction, A] socket_id : %s", socket_id);
         return -1;
+    }
+
+
+    /**
+     * 四風連打かどうかを判定する
+     * @returns {Boolean}
+     */
+    #checkSufurenda(){
+        if (this.cplayer_idx == 3 && this.players[this.cplayer_idx].getIsFirstTurn() && this.tiles.length == 136 - (14 * 4) - 14){
+            let essences = [...Array(4)].map((_,i) => this.players[i].getEssenceDiscards()[0]);
+            if (["z1", "z2", "z3", "z4"].includes(essences[0]) && essences.every(item => item === essences[0]))
+                return true;
+        }
+        return false;
     }
 
 

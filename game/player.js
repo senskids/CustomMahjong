@@ -147,6 +147,9 @@ class Player{
      * @param {Array} tile      ツモした牌（タイルID表現）
      */
     checkEnableActionsForDrawTile(seat_id, tile, field_info = null){
+        // 海底ツモか確認する（嶺上ツモは別関数で処理するので、嶺上ツモで山牌が0になっても下の処理は呼ばれない（海底はつかない））
+        if (field_info.tile_num == 0) field_info.hupai.haidi = 1;
+        
         // 何もできないで初期化
         this.resetEnableActions();
         // 自分のツモじゃなかったらreturn
@@ -173,6 +176,9 @@ class Player{
      * @param {Array} tile      捨牌（タイルID表現）
      */
     checkEnableActionsForDiscardTile(seat_id, tile, field_info = null){
+        // 河底捨牌か確認する（暗槓の捨牌などでもこの関数は呼ばれる）
+        if (field_info.tile_num == 0) field_info.hupai.haidi = 2;
+
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         // 初期状態として何もしてはいけないをセット
         this.resetEnableActions();
@@ -244,6 +250,9 @@ class Player{
      * @param {String} kan_type   槓の種類（'kan', 'ankan', 'kakan'）
      */
     checkEnableActionsForDrawReplacementTile(seat_id, tile, kan_type, field_info = null){
+        // 嶺上ツモであることを明記（山牌が0でも海底はつかない）
+        field_info.hupai.lingshang = true;
+
         // 何もできないで初期化
         this.resetEnableActions();
         // 自分のツモじゃなかったらreturn

@@ -156,12 +156,12 @@ class Player{
         // ツモあがり可能かチェック
         if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
-        if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
+        if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0 && field_info["tile_num"] >= 4) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
-        if (!this.is_riichi) { if (utils.canAnkan(this.hands).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true; }
-        else { if (utils.canAnkanInRiichi(this.hands, this.melds, tile).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true; }
+        if (!this.is_riichi) { if (utils.canAnkan(this.hands).length > 0 && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true; }
+        else { if (utils.canAnkanInRiichi(this.hands, this.melds, tile).length > 0 && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true; }
         // 加槓できるかチェック
-        if (utils.canKakan(this.hands, this.melds).length > 0 && !this.is_riichi && field_info["kan_num"] < 4) this.enable_actions.kan = true;
+        if (utils.canKakan(this.hands, this.melds).length > 0 && !this.is_riichi && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true;
         // 九種九牌できるかチェック
         if (this.is_first_turn && utils.canNineDiffTerminalTiles(this.hands)) this.enable_actions.drawn = true;
     }
@@ -183,11 +183,11 @@ class Player{
             return;
         }
         // 上家が捨てた場合のみ、チー出来るか判定
-        if (seat_relation == 3) if (utils.canChi(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.chi = true;
+        if (seat_relation == 3) if (utils.canChi(this.hands, tile).length > 0 && !this.is_riichi && field_info["tile_num"] >= 1) this.enable_actions.chi = true;
         // ポン出来るか判定
-        if (utils.canPon(this.hands, tile).length > 0 && !this.is_riichi) this.enable_actions.pon = true;
+        if (utils.canPon(this.hands, tile).length > 0 && !this.is_riichi && field_info["tile_num"] >= 1) this.enable_actions.pon = true;
         // カン出来るか判定
-        if (utils.canKan(this.hands, tile).length > 0 && !this.is_riichi && field_info["kan_num"] < 4) this.enable_actions.kan = true;
+        if (utils.canKan(this.hands, tile).length > 0 && !this.is_riichi && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true;
         // ロン出来るか判定
         if (!this.is_furiten && !this.is_temporary_furiten && utils.canRon(this.hands, this.melds, tile, seat_relation, field_info)) this.enable_actions.ron = true;
         // 何かアクションを起こせるなら、スキップも押せるようにする  FIXME
@@ -256,9 +256,9 @@ class Player{
         // リーチ可能かチェック
         if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
-        if (utils.canAnkan(this.hands).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true;
+        if (utils.canAnkan(this.hands).length > 0 && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true;
         // 加槓できるかチェック
-        if (utils.canKakan(this.hands, this.melds).length > 0 && field_info["kan_num"] < 4) this.enable_actions.kan = true;
+        if (utils.canKakan(this.hands, this.melds).length > 0 && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true;
     }
 
 

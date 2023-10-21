@@ -905,19 +905,19 @@ class Mahjong {
 
 
     /**
-     * FIXME 
-     * @returns 
+     * Mahjongライブラリのあがり計算に必要なフィールド情報を持ったjsonを返す関数
+     * @returns {JSON}
      */
     getFieldInfo = function(){
         return {
-            rule:           null, 
-            zhuangfeng:     this.field_count,      // 場風
-            menfeng:        this.round_count,      // 自風
+            rule:           null,                  // utilsで指定
+            zhuangfeng:     this.field_count,      // 場風 0 : 東
+            menfeng:        this.round_count,      // 自風 0 : 東
             baopai:         this.dora,             // ドラ表示牌の配列
             fubaopai:       null,                  // 裏ドラ表示牌の配列
             hupai: {
-                lizhi:      null,                  // 立直なし0, 立直1, ダブリー2
-                yifa:       false,                 // 一発
+                lizhi:      null,                  // playersで指定
+                yifa:       null,                  // 一発
                 qianggang:  false,                 // 槍槓
                 lingshang:  false,                 // 嶺上
                 haidi:      0,                     // 0: ハイテイなし、1: ハイテイツモ、2: ハイテイロン  FIXME
@@ -927,7 +927,8 @@ class Mahjong {
                 changbang:  this.honba_count,      // 積み棒の本数
                 lizhibang:  0                      // 立直棒の本数   // FIXME
             },
-            kan_num:        this.kans.length       // フィールドのカンの数
+            kan_num:        this.kans.length,      // フィールドのカンの数
+            tile_num:       this.tiles.length,     // 山牌の数
         }
     }
 

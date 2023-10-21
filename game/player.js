@@ -224,17 +224,33 @@ class Player{
     }    
 
 
-    /** FIXME : Not implemented
+    /**
      * seat_idの人がtileを槓（暗槓or加槓）した際に、アクション（槍槓）ができるかチェックする
+     * 槍槓は一発や人和と複合OK
      * @param {Number} seat_id    シート番号（絶対値 0～4）
      * @param {Array} tile        槓した牌（タイルID表現）
      * @param {Boolean} is_ankan  暗槓かどうか（暗槓の場合、国士無双だけできる）
      */
-    checkEnableActionsForKan(seat_id, tile, is_ankan){
+    checkEnableActionsForKan(seat_id, tile, is_ankan, field_info = null){
+        field_info.hupai.qianggang = true;
         this.resetEnableActions();
+        const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
+        if (seat_relation == 0) return;
         if (this.is_furiten || this.is_temporary_furiten) return;
-        // if (utils.canRon(this.hands, this.melds, seat_relation, tile, field_info) > 0) this.enable_actions.ron = true;
-        console.log("[checkEnableActionsForKakanTile] not implemented");
+        if (utils.canRon(this.hands, this.melds, tile, seat_relation, field_info)) {
+            if (is_ankan){  // 国士無双だけ
+                let cands = ["m1","m9","p1","p9","s1","s9","z1","z2","z3","z4","z5","z6","z7"]
+                let rets = []
+                for (var i = 0; i < this.hands.length; i++){
+                    var v = utils.id2tile[this.hands[i]];
+                    if (cands.includes(v) && !rets.includes(v)) rets.push(v);
+                }
+                if (rets.length >= (cands.length - 1)) this.enable_actions.ron = true;
+            }
+            else{
+                this.enable_actions.ron = true;
+            }
+        }
         // フリテンの更新（この捨牌に対してはロン可能）
         if (this.enable_actions.ron) {
             this.is_temporary_furiten = true; 

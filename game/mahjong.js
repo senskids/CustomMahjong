@@ -724,7 +724,7 @@ class Mahjong {
         this.kans.push({'player': p, 'from_who': null});
 
         // プレイヤーpがhands[0]で槓したことに対し、他プレイヤーが槍槓出来るかを確認
-        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForKan(p, hands[0], this.getFieldInfo()); 
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForKan(p, hands[0], true, this.getFieldInfo()); 
 
         // 他プレイヤーからの宣言受け入れの準備
         this.declare_queue = [];           // プレイヤーからの宣言を貯めておくqueue
@@ -772,7 +772,7 @@ class Mahjong {
         this.kans.push({'player': p, 'from_who': (p + meld_info.from_who + 4) % 4});  
 
         // プレイヤーpがhandで槓したことに対し、他プレイヤーが槍槓出来るかを確認
-        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForKan(p, hand, this.getFieldInfo()); 
+        for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForKan(p, hand, false, this.getFieldInfo()); 
 
         // 他プレイヤーからの宣言受け入れの準備
         this.declare_queue = [];           // プレイヤーからの宣言を貯めておくqueue

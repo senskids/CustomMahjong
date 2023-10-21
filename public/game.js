@@ -23,7 +23,11 @@ actions.forEach(action => {
     actionBtns[action] = document.getElementById(`${action}-btn`);
     document.getElementById(`${action}-btn`).addEventListener('click', (event) => {
         console.log(action);
-        if(action === "riichi") is_riichi = true;
+        if(action === "riichi"){
+            is_riichi = true;
+            //すべてのイベントリスナーを除去
+            renderTiles(handEls[0], handTiles[0], "100px", false, true, is_Draw);
+        }
         socket.emit('declare-action', action);
     });    
 });
@@ -44,8 +48,8 @@ let is_Draw = false;
 // 牌を描画するかどうかを判定するフラグ
 let is_Render = false;
 
-// 直立下かどうかをはんていするフラグ
-let is_riichi = false; 
+// 立直下かどうかをはんていするフラグ
+let is_riichi = false;
 
 // Socket.IOのインスタンスを作成
 const socket = io();
@@ -71,12 +75,12 @@ let meldTiles = [[], [], [], []];
 let doraTiles = [];
 // let wallTiles = [];
 
-let riichiTile= [null,null,null,null];// 直立の際の捨て牌の位置
+let riichiTile= [null,null,null,null];// 立直の際の捨て牌の位置
 
 renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false, playerNum){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     
-    // 各プレイヤーの直立の際の捨て牌の位置記録
+    // 各プレイヤーの立直の際の捨て牌の位置記録
     if(is_riichi && is_current == false){
         riichiTile[playerNum] = tiles.length-1;
     }
@@ -84,8 +88,9 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
         const tileEl = document.createElement('img');
         tileEl.classList.add('hand-tile');
         tileEl.src = key2fname_map[tile];
+        tileEl.alt = tile;
         tileEl.style = `width: ${img_width};`;
-        // 直立の牌の場合90度傾ける
+        // 立直の牌の場合90度傾ける
         if(idx == riichiTile[playerNum] && is_current == false){
             tileEl.style = "transform:rotate(90deg);";
             is_riichi = false;
@@ -111,13 +116,13 @@ renderMeldTiles = function(el, tiles, img_width){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     let rotateFlag = false;
     tiles.forEach((arr, _) => {
-        let p2 = arr.from_who;// 各組合せの泣かれた人
+        let p2 = arr.from_who;// 各組合せの鳴かれた人
         arr.melds.forEach((tile, idx) => {
             const tileEl = document.createElement('img');
             tileEl.classList.add('hand-tile');
             tileEl.src = key2fname_map[tile];
             tileEl.style = "width: " + img_width + ";";
-            // 泣かれた人側の牌だけ90度傾ける
+            // 鳴かれた人側の牌だけ90度傾ける
             if(arr.melds.length === 4){ // かん
                 if(p2 === 1 && idx === 3){
                     rotateFlag = true;
@@ -297,6 +302,7 @@ socket.on('select-meld-cand', (data) => {
         socket.emit('select-meld-cand', data[0]);
     else{
         console.log("select-meld-cand", data);
+        // FIXME 鳴ける組み合わせを表示して、選択できるようにする
         socket.emit('select-meld-cand', data[1]);
     }
 });
@@ -316,8 +322,16 @@ socket.on('select-riichi-cand', (data) => {
     if (data.length == 1)
         socket.emit('declare-riichi', data[0]);
     else{
-        console.log("declare-riichi", data);
-        socket.emit('declare-riichi', data[1]);
+        // FIXME 捨てられる牌を表示して、選択できるようにする
+        imgEls = handEls[0].getElementsByTagName('img');
+        for (var i = 0; i < imgEls.length; i++){
+            if (data.includes(parseInt(imgEls[i].alt))){
+                let v = parseInt(imgEls[i].alt)
+                imgEls[i].addEventListener('click', () => {
+                    socket.emit('declare-riichi', v);
+                })
+            }
+        }
     }
 });
 

@@ -335,16 +335,16 @@ getObj = function(field_info){
         baopai:         field_info.baopai.map(e=>id2tile[e]),        // ドラ表示牌の配列
         fubaopai:       (field_info.fugaopai != null)? field_info.fugaopai.map(e=>id2tile[e]): null,   // 裏ドラ表示牌の配列
         hupai: {
-            lizhi:      field_info.lizhi,        // 立直なし0, 立直1, ダブリー2
-            yifa:       field_info.yifa,         // 一発
-            qianggang:  field_info.qianggang,    // 槍槓
-            lingshang:  field_info.lingshang,    // 嶺上
-            haidi:      field_info.haidi,    // 0: ハイテイなし、1: ハイテイツモ、2: ハイテイロン  FIXME
-            tianhu:     field_info.tianhu,   // 0: 天和/地和なし、1: 天和、2: 地和   FIXME
+            lizhi:      field_info.hupai.lizhi,        // 立直なし0, 立直1, ダブリー2
+            yifa:       field_info.hupai.yifa,         // 一発
+            qianggang:  field_info.hupai.qianggang,    // 槍槓
+            lingshang:  field_info.hupai.lingshang,    // 嶺上
+            haidi:      field_info.hupai.haidi,        // 0: ハイテイなし、1: ハイテイツモ、2: ハイテイロン  FIXME
+            tianhu:     field_info.hupai.tianhu,       // 0: 天和/地和なし、1: 天和、2: 地和   FIXME
         },
         jicun: {
-            changbang:  field_info.changbang,    // 積み棒の本数
-            lizhibang:  field_info.lizhibang,    // 立直棒の本数   // FIXME
+            changbang:  field_info.jicun.changbang,    // 積み棒の本数
+            lizhibang:  field_info.jicun.lizhibang,    // 立直棒の本数   // FIXME
         }
     }
 }

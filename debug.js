@@ -84,3 +84,55 @@ exports.createHaidiTiles = function(){
     }
     return tiles;
 }
+
+
+// 人和確認用
+exports.createRenheTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    let inits = [
+        [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 132], 
+        [4, 8, 16, 17, 18, 24, 28, 32, 36, 40, 44, 76, 77],
+        [1, 16, 17, 18, 24, 25, 26, 32, 33, 34, 40, 41, 42],
+        [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 128], 
+    ];
+    for (var p = 0; p < 4; p++){
+        for (var i = 0; i < 13; i++)
+            tiles[p * 13 + i] = inits[p][i];
+    }
+    return tiles;
+}
+
+
+// 嶺上開花確認用
+exports.createLingshangTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    let inits = [
+        [40, 41, 42, 43, 4, 8, 12, 108, 109, 110, 133, 132, 60], 
+        [124, 125, 16, 17, 18, 24, 28, 32, 36, 40, 44, 76, 77],
+        [1, 16, 17, 18, 24, 25, 26, 32, 33, 34, 40, 41, 42],
+        [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 128], 
+    ];
+    for (var p = 0; p < 4; p++){
+        for (var i = 0; i < 13; i++)
+            tiles[p * 13 + i] = inits[p][i];
+    }
+    return tiles;
+}
+
+
+// 流し満貫確認用
+exports.createDrawnManganTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    let inits = [
+        [0, 1, 2, 32, 33, 34, 36, 37, 38, 68, 69, 70, 72], 
+        [124, 125, 16, 17, 18, 24, 28, 32, 36, 40, 44, 76, 77],
+        [1, 16, 17, 18, 24, 25, 26, 32, 33, 34, 40, 41, 42],
+        [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 128], 
+    ];
+    for (var p = 0; p < 4; p++){
+        for (var i = 0; i < 13; i++)
+            tiles[p * 13 + i] = inits[p][i];
+    }
+    return tiles;
+}
+

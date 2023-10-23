@@ -341,6 +341,11 @@ socket.on('cannot-discard-tile', (tile_id) => {
 });
 
 
+socket.on('hule', (hule) => {
+    console.log(hule);
+});
+
+
 socket.on('game-status', (data) => {
     data.names.forEach((e, i)=>{
         nameEls[i].innerHTML = e;

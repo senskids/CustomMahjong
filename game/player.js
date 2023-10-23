@@ -19,6 +19,8 @@ class Player{
         this.seat = -1;
         /** 現在の点棒 */
         this.point = 25000;
+        /** 現局の自風 0:東, 1:南, 2:西, 3:北 */
+        this.cmenfeng = -1;
         /** 手牌（タイルID表現） */
         this.hands = [];
         /** 捨牌（タイルID表現） */
@@ -35,8 +37,10 @@ class Player{
         this.is_menzen = true;             
         /** 聴牌しているか */
         this.is_tenpai = false;
-        /** リーチしているか */
+        /** 立直しているか */
         this.is_riichi = false;
+        /** ダブル立直かどうか */
+        this.is_double_riichi = false;
         /** 一発状態にあるかどうか */
         this.is_oneshot = false;
         /** 現在、捨ててはいけない牌（タイルID表現） */
@@ -45,6 +49,10 @@ class Player{
         this.is_furiten = false;
         /** 一時的なフリテン状態か否か */
         this.is_temporary_furiten = false;
+        /** 流し満貫の権利があるか否か */
+        this.is_drawn_mangan = true;
+        /** 今上がった際の点数 FIXME */
+        this.hule_info = undefined;
         /** 持ち時間  FIXME 実装していない */
         this.allotted_time = 10;
         /** プレイヤーが現在可能なアクションの辞書 */
@@ -64,9 +72,11 @@ class Player{
 
     /**
      * 局の開始時に手牌、捨牌、鳴牌を初期化する
-     * @param {Array} tiles  初期手牌 
+     * @param {Array} tiles            初期手牌 
+     * @param {Number} parent_seat_id  親の座席
      */
-    setInitialTiles(tiles){
+    setInitialTiles(tiles, parent_seat_id){
+        this.cmenfeng = [0, 3, 2, 1][this.getSeatRelationFromSeatId(parent_seat_id)];  // 現局の自風
         this.hands = [...tiles];
         this.melds = [];
         this.discards = [];
@@ -75,10 +85,13 @@ class Player{
         this.is_menzen = true;             
         this.is_tenpai = false;
         this.is_riichi = false;
+        this.is_double_riichi = false;
         this.is_oneshot = false;
         this.forbidden_discards = [];
         this.is_furiten = false;
         this.is_temporary_furiten = false;
+        this.is_drawn_mangan = true;
+        this.hule_info = undefined;
         this.resetEnableActions();
         this.sortHands();
     }
@@ -120,6 +133,8 @@ class Player{
         if (!this.is_riichi && this.forbidden_discards.length > 0) this.forbidden_discards = [];
         // 一発判定
         if (!is_riichi_turn) this.is_oneshot = false;
+        // 流し満貫判定
+        if (!utils.yaojius.includes(utils.id2tile[tile])) this.is_drawn_mangan = false;
 
         // フリテンの確認（立直してる場合は立直時にフリテン確認を行う）        
         this.is_temporary_furiten = false;
@@ -147,17 +162,23 @@ class Player{
      * @param {Array} tile      ツモした牌（タイルID表現）
      */
     checkEnableActionsForDrawTile(seat_id, tile, field_info = null){
-        // 海底ツモか確認する（嶺上ツモは別関数で処理するので、嶺上ツモで山牌が0になっても下の処理は呼ばれない（海底はつかない））
-        if (field_info.tile_num == 0) field_info.hupai.haidi = 1;
-        
         // 何もできないで初期化
         this.resetEnableActions();
         // 自分のツモじゃなかったらreturn
         if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
+        
+        // field_infoに自身の情報を付与する（嶺上ツモは別関数で処理するので、嶺上ツモで山牌が0になっても海底はつかない）
+        field_info.menfeng = this.cmenfeng;
+        if (this.is_riichi) field_info.hupai.lizhi = (this.is_double_riichi)? 2: 1;
+        if (this.is_oneshot) field_info.hupai.yifa = true;  // 一発
+        if (this.is_first_turn) field_info.hupai.tianhu = (this.cmenfeng == 0)? 1: 2;
+        if (field_info.tile_num == 0) field_info.hupai.haidi = 1;
+
         // 捨てることは絶対できる
         this.enable_actions.discard = true;
         // ツモあがり可能かチェック
-        if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
+        this.hule_info = utils.canTsumo(this.hands, this.melds, tile, field_info);
+        if (this.hule_info != undefined && this.hule_info.defen != 0) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
         if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0 && field_info["tile_num"] >= 4) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
@@ -170,24 +191,28 @@ class Player{
     }
 
 
-    /** FIXME field_info, ラスツモなら槓できない等
+    /** 
      * seat_idの人がtileを捨てた際に、enable_actionsを更新する
      * @param {Number} seat_id  捨てた人のシート番号（絶対値 0～4）
      * @param {Array} tile      捨牌（タイルID表現）
      */
     checkEnableActionsForDiscardTile(seat_id, tile, field_info = null){
-        // 河底捨牌か確認する（暗槓の捨牌などでもこの関数は呼ばれる）
-        if (field_info.tile_num == 0) field_info.hupai.haidi = 2;
-
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         // 初期状態として何もしてはいけないをセット
         this.resetEnableActions();
-        if (this.is_riichi) field_info.hupai.riichi = 1;
         // 自分が捨てた場合はreturn
         if (seat_relation == 0) { 
             this.is_first_turn = false;
             return;
         }
+
+        // field_infoに自身の情報を付与する
+        field_info.menfeng = this.cmenfeng;
+        if (this.is_riichi) field_info.hupai.lizhi = (this.is_double_riichi)? 2 : 1;
+        if (this.is_oneshot) field_info.hupai.yifa = true;         // 一発
+        if (this.is_first_turn) field_info.hupai.tianhu = 3;       // 人和
+        if (field_info.tile_num == 0) field_info.hupai.haidi = 2;  // 暗槓の捨牌などでも河底捨牌
+
         // 上家が捨てた場合のみ、チー出来るか判定
         if (seat_relation == 3) if (utils.canChi(this.hands, tile).length > 0 && !this.is_riichi && field_info["tile_num"] >= 1) this.enable_actions.chi = true;
         // ポン出来るか判定
@@ -195,7 +220,10 @@ class Player{
         // カン出来るか判定
         if (utils.canKan(this.hands, tile).length > 0 && !this.is_riichi && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true;
         // ロン出来るか判定
-        if (!this.is_furiten && !this.is_temporary_furiten && utils.canRon(this.hands, this.melds, tile, seat_relation, field_info)) this.enable_actions.ron = true;
+        if (!this.is_furiten && !this.is_temporary_furiten){
+            this.hule_info = utils.canRon(this.hands, this.melds, tile, seat_relation, field_info);
+            if (this.hule_info != undefined && this.hule_info.defen != 0) this.enable_actions.ron = true;
+        } 
         // 何かアクションを起こせるなら、スキップも押せるようにする  FIXME
         this.enable_actions.skip = this.canAnyAction();
 
@@ -217,8 +245,11 @@ class Player{
     checkEnableActionsForMeld(p1_seat_id, p2_seat_id, discard, hands){
         const seat_relation = this.getSeatRelationFromSeatId(p1_seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         this.resetEnableActions();
+        // 1順目、一発の権利消失
         this.is_first_turn = false;
         this.is_oneshot = false;
+        // 流し満貫の権利消失
+        if (p2_seat_id == this.seat) this.is_drawn_mangan = false;
         if (seat_relation == 0) this.enable_actions.discard = true;
         return;
     }    
@@ -232,25 +263,36 @@ class Player{
      * @param {Boolean} is_ankan  暗槓かどうか（暗槓の場合、国士無双だけできる）
      */
     checkEnableActionsForKan(seat_id, tile, is_ankan, field_info = null){
-        field_info.hupai.qianggang = true;
         this.resetEnableActions();
         const seat_relation = this.getSeatRelationFromSeatId(seat_id);  // 0: 自分、1: 下家、2: 対面、3: 上家
         if (seat_relation == 0) return;
         if (this.is_furiten || this.is_temporary_furiten) return;
-        if (utils.canRon(this.hands, this.melds, tile, seat_relation, field_info)) {
-            if (is_ankan){  // 国士無双だけ
-                let cands = ["m1","m9","p1","p9","s1","s9","z1","z2","z3","z4","z5","z6","z7"]
-                let rets = []
-                for (var i = 0; i < this.hands.length; i++){
-                    var v = utils.id2tile[this.hands[i]];
-                    if (cands.includes(v) && !rets.includes(v)) rets.push(v);
+
+        // field_infoに自身の情報を付与する（嶺上ツモは別関数で処理するので、嶺上ツモで山牌が0になっても海底はつかない）
+        field_info.menfeng = this.cmenfeng;
+        field_info.hupai.qianggang = true;  // 槍槓
+        if (this.is_riichi) field_info.hupai.lizhi = (this.is_double_riichi)? 2 : 1;
+        if (this.is_oneshot) field_info.hupai.yifa = true;  // 一発
+        if (this.is_first_turn) field_info.hupai.tianhu = 3;
+
+        // ロン出来るか判定
+        if (!this.is_furiten && !this.is_temporary_furiten){
+            this.hule_info = utils.canRon(this.hands, this.melds, tile, seat_relation, field_info);
+            if (this.hule_info != undefined && this.hule_info.defen != 0) {
+                if (is_ankan){  // 国士無双だけ
+                    let rets = []
+                    for (var i = 0; i < this.hands.length; i++){
+                        var v = utils.id2tile[this.hands[i]];
+                        if (utils.yaojius.includes(v) && !rets.includes(v)) rets.push(v);
+                    }
+                    if (rets.length >= (cands.length - 1)) this.enable_actions.ron = true;
                 }
-                if (rets.length >= (cands.length - 1)) this.enable_actions.ron = true;
+                else{
+                    this.enable_actions.ron = true;
+                }
             }
-            else{
-                this.enable_actions.ron = true;
-            }
-        }
+        } 
+
         // フリテンの更新（この捨牌に対してはロン可能）
         if (this.enable_actions.ron) {
             this.is_temporary_furiten = true; 
@@ -266,18 +308,26 @@ class Player{
      * @param {String} kan_type   槓の種類（'kan', 'ankan', 'kakan'）
      */
     checkEnableActionsForDrawReplacementTile(seat_id, tile, kan_type, field_info = null){
-        // 嶺上ツモであることを明記（山牌が0でも海底はつかない）
-        field_info.hupai.lingshang = true;
+        // 一発、天和の権利消失
+        this.is_oneshot = false;
+        this.is_first_turn = false;
 
         // 何もできないで初期化
         this.resetEnableActions();
         // 自分のツモじゃなかったらreturn
         if (this.getSeatRelationFromSeatId(seat_id) != 0) return;
+
+        // field_infoに自身の情報を付与する（山牌が0でも海底はなし）
+        field_info.menfeng = this.cmenfeng;
+        field_info.hupai.lingshang = true;  // 嶺上
+        if (this.is_riichi) field_info.hupai.lizhi = (this.is_double_riichi)? 2 : 1;
+
         // 捨てることは絶対できる
         this.enable_actions.discard = true;
         if (kan_type == 'kan') return;  // 捨牌に対する槓なら捨てるだけ
         // ツモあがり可能かチェック
-        if (utils.canTsumo(this.hands, this.melds, tile, field_info)) this.enable_actions.tsumo = true;
+        this.hule_info = utils.canTsumo(this.hands, this.melds, tile, field_info);
+        if (this.hule_info != undefined && this.hule_info.defen != 0) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
         if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
@@ -400,6 +450,8 @@ class Player{
     performRiichi(hand_tile){
         this.is_riichi = true;
         this.is_oneshot = true;
+        if (this.is_first_turn) this.is_double_riichi = true;
+
         // ツモ牌以外切れなくする
         this.forbidden_discards = this.hands.filter(e => e != hand_tile);
         // フリテンの確認
@@ -487,6 +539,12 @@ class Player{
                 break;
         }
         return user_wind;
+    }
+    getHuleInfo(){
+        return this.hule_info;
+    }
+    getDrawnMangan(){
+        return this.is_drawn_mangan;
     }
 
     /////////////////////////////////////////////

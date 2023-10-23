@@ -33,6 +33,11 @@ id2tile[4 * 22 + 0] = 's0';
 exports.id2tile = id2tile;
 
 
+/** 幺九牌のリスト */
+const yaojius = ['m1','m9','p1','p9','s1','s9','z1','z2','z3','z4','z5','z6','z7']
+exports.yaojius = yaojius; 
+
+
 /**
  * プレイヤーの手牌、鳴牌をMajiangライブラリの形式に変換する
  * @param {Array} hands        プレイヤーの手牌（タイルID表現） 
@@ -234,30 +239,35 @@ exports.canRiichi = function(hands, melds){
  * @param {Array} melds       プレイヤーの鳴き牌（鳴き牌表現） 
  * @param {Number} tsumo      ツモした牌のタイルID
  * @param {JSON} field_info   FIXME
- * @returns {Boolean}         ツモあがりできるか否か
+ * @returns {*}      Majiangライブラリのhule情報（json）
  */
 exports.canTsumo = function(hands, melds, tsumo, field_info){
     const obj = getObj(field_info);
     const ret = Majiang.Util.hule(convert2Majiang(hands, melds, tsumo), null, obj);
-    return ret != undefined && ret.defen != 0;
+    return ret;
 }
 
 
 /**
- * FIXME、フリテンを考慮していない
  * ロンあがりできるかチェックする
  * @param {Array} myhands         プレイヤーの手牌、ツモ牌も含む（タイルID表現） 
  * @param {Array} mymelds         プレイヤーの鳴き牌（鳴き牌表現） 
  * @param {Number} discard        捨牌のタイルID
  * @param {Number} seat_relation  プレイヤーと捨牌プレイヤーの座席関係（0～3）
  * @param {JSON} field_info       FIXME
- * @returns {Boolean}             ロンあがりできるか否か
+ * @returns {*}      Majiangライブラリのhule情報（json）
  */
 exports.canRon = function(myhands, mymelds, discard, seat_relation, field_info){
     const d_tile = id2tile[discard] + ["","-","=","+"][seat_relation];
     const obj = getObj(field_info);
-    const ret = Majiang.Util.hule(convert2Majiang(myhands, mymelds, null), d_tile, obj);
-    return ret != undefined && ret.defen != 0;
+    let ret = Majiang.Util.hule(convert2Majiang(myhands, mymelds, null), d_tile, obj);
+    // 人和の反映（Majiangライブラリに実装されていない）
+    if (ret != undefined && field_info.hupai.tianhu == 3) {
+        let p1_seat_id = field_info.menfeng;
+        let p2_seat_id = (p1_seat_id + seat_relation) % 4;
+        ret = updateHuleWithRenhe(ret, p1_seat_id, p2_seat_id, field_info);
+    }
+    return ret;
 }
 
 
@@ -267,10 +277,9 @@ exports.canRon = function(myhands, mymelds, discard, seat_relation, field_info){
  * @return {Boolean} 
  */
 exports.canNineDiffTerminalTiles = function(hands){
-    const tgts = ["m1", "m9", "s1", "s9", "p1", "p9", "z1", "z2", "z3", "z4", "z5", "z6", "z7"];
     const cands = [];
     for (var i = 0; i < hands.length; i++) {
-        if (tgts.includes(id2tile[hands[i]]) && !cands.includes(id2tile[hands[i]])) cands.push(id2tile[hands[i]]);
+        if (yaojius.includes(id2tile[hands[i]]) && !cands.includes(id2tile[hands[i]])) cands.push(id2tile[hands[i]]);
     }
     return cands.length >= 9;
 }
@@ -333,7 +342,7 @@ getObj = function(field_info){
         zhuangfeng:     field_info.zhuangfeng,   // 場風
         menfeng:        field_info.menfeng,      // 自風
         baopai:         field_info.baopai.map(e=>id2tile[e]),        // ドラ表示牌の配列
-        fubaopai:       (field_info.fugaopai != null)? field_info.fugaopai.map(e=>id2tile[e]): null,   // 裏ドラ表示牌の配列
+        fubaopai:       field_info.fubaopai.map(e=>id2tile[e]),      // 裏ドラ表示牌の配列
         hupai: {
             lizhi:      field_info.hupai.lizhi,        // 立直なし0, 立直1, ダブリー2
             yifa:       field_info.hupai.yifa,         // 一発
@@ -348,3 +357,38 @@ getObj = function(field_info){
         }
     }
 }
+
+
+/**
+ * あがり役に人和を追加する
+ */
+updateHuleWithRenhe = function(hule, p1, p2, field_info) {
+    let hupai = [ {name: '人和', fanshu: '*'} ];
+    let damanguan = 1;
+    if (hule.hupai != undefined){
+        for (var i = 0; i < hule.hupai.length; i++) {
+            if (hule.hupai[i].fanshu === '*'){
+                hupai.push(hule.hupai[i]);
+                damanguan += 1;
+            }
+            else if (hule.hupai[i].fanshu === '**') {
+                hupai.push(hule.hupai[i]);
+                damanguan += 2;
+            }
+        }
+    }
+    let defen = 32000 * damanguan;  // 親はありえない
+    let fenpei = [0, 0, 0, 0];
+    fenpei[p1] = defen + field_info.jicun.changbang * 300 + field_info.jicun.lizhibang * 1000;
+    fenpei[p2] = -(defen + field_info.jicun.changbang * 300);
+    const ret = {
+        hupai: hupai, 
+        fu: undefined,
+        fanshu: undefined,
+        damanguan: damanguan,
+        defen: defen,
+        fenpei: [...fenpei],
+    }
+    return ret;
+}
+

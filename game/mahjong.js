@@ -35,6 +35,8 @@ class Mahjong {
         this.dead_tiles = [];
         /** 現在のドラ */
         this.dora = [];
+        /** 現在の裏ドラ */
+        this.uradora = [];
         /** すでに捨てられた牌 */
         this.discards = [];  // FIXME 今のところ使っていない
         /** カンリスト {'player': Number, 'from_who': Number} */
@@ -255,14 +257,15 @@ class Mahjong {
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
-            this.players[p].setInitialTiles(this.tiles.slice(0, 13));  // 頭13個をpush
+            this.players[p].setInitialTiles(this.tiles.slice(0, 13), this.parent_idx);  // 頭13個をpush
             this.tiles = this.tiles.slice(13);   // 頭13個抜き取った山牌を新たな山牌にする
         }
         // 王牌
-        this.dead_tiles = this.tiles.slice(0, 13);
-        this.tiles = this.tiles.slice(13);
+        this.dead_tiles = this.tiles.slice(0, 12);
+        this.tiles = this.tiles.slice(12);
         // ドラ表示
         this.dora = [this.tiles.pop()];
+        this.uradora = [this.tiles.pop()];
         // カンの初期化
         this.kans = [];  
 
@@ -525,7 +528,7 @@ class Mahjong {
         // declare_queueからどのアクションを採用するかを選ぶ（ロン、(カン、ポン)、チーの順番で優先する）
         let selected = [this.declare_queue[0]];
         let is_exist_ron = selected[0].priority > 100;
-        for (var i = 0; i < this.declare_queue.length; i++){
+        for (var i = 1; i < this.declare_queue.length; i++){
             var ele = this.declare_queue[i];
             if (ele.priority > 100 && selected[0].priority > 100 && this.can_multi_ron){
                 is_exist_ron = true;
@@ -814,6 +817,7 @@ class Mahjong {
         this.dead_tiles.push(this.tiles.pop());
         // ドラ追加
         this.dora.push(this.dead_tiles.pop());
+        this.uradora.push(this.dead_tiles.pop());
         // カンした人に嶺上牌をひかせる
         this.players[p].drawTile(replacement_tile);
 
@@ -867,7 +871,9 @@ class Mahjong {
             console.log("[ERROR, performTsumo, A] illegal action");
             return;
         }
-        // 点数を取得する  FIXME
+        // 点数を取得する
+        console.log(player.getHuleInfo());
+        this.sendHuleMsgToAll(player.getHuleInfo());
         
         // 次のゲームに進む
         this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [p], false);
@@ -882,11 +888,11 @@ class Mahjong {
      * @next forwardGame  FIXME : あがり画面に移行するようにする
      */
     performRon(ron_players, roned_player, roned_tile){
-        console.log("Ron!!!");
         for (var i = 0; i < ron_players.length; i++){
-            let ron_player = ron_players.player;
-            // 点数を取得する  FIXME
+            let ron_player = ron_players[i].player;
 
+            console.log(this.players[ron_player].getHuleInfo());
+            this.sendHuleMsgToAll(this.players[ron_player].getHuleInfo());
         }
         // 次のゲームに進む
         this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, ron_players, false);
@@ -900,6 +906,17 @@ class Mahjong {
      */
     drawnGame(is_special = false){
         console.log("流局");
+
+        // 流し満貫チェック
+        for (var i = 0; i < 4; i++) {
+            if (this.players[i].getDrawnMangan()){
+                this.sendHuleMsgToAll(`プレイヤー${i}：流し満貫`);
+                // 点棒やりとり fixme
+            }
+        }
+        
+        // 聴牌チェック fixme
+
         this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [], false);
     }
 
@@ -912,22 +929,22 @@ class Mahjong {
         return {
             rule:           null,                  // utilsで指定
             zhuangfeng:     this.field_count,      // 場風 0 : 東
-            menfeng:        this.round_count,      // 自風 0 : 東
+            menfeng:       this.round_count,      // 自風 playerで指定 
             baopai:         this.dora,             // ドラ表示牌の配列
-            fubaopai:       null,                  // 裏ドラ表示牌の配列
+            fubaopai:       this.uradora,          // 裏ドラの配列
             hupai: {
-                lizhi:      null,                  // playersで指定
-                yifa:       null,                  // 一発
-                qianggang:  false,                 // 槍槓
-                lingshang:  false,                 // 嶺上
-                haidi:      0,                     // 0: ハイテイなし、1: ハイテイツモ、2: ハイテイロン  FIXME
-                tianhu:     0                      // 0: 天和/地和なし、1: 天和、2: 地和   FIXME
+                lizhi:      null,                  // 立直 playerで指定
+                yifa:       null,                  // 一発 playerで指定
+                qianggang:  false,                 // 槍槓 playerで指定
+                lingshang:  false,                 // 嶺上 playerで指定
+                haidi:      0,                     // 海底 playerで指定 
+                tianhu:     0                      // 天和 playerで指定 0: 天和/地和なし、1: 天和、2: 地和、3: 人和
             },
             jicun: {
                 changbang:  this.honba_count,      // 積み棒の本数
                 lizhibang:  0                      // 立直棒の本数   // FIXME
             },
-            kan_num:        this.kans.length,      // フィールドのカンの数
+            kan_num:        this.kans.length,      // 場のカンの数
             tile_num:       this.tiles.length,     // 山牌の数
         }
     }
@@ -1101,6 +1118,15 @@ class Mahjong {
     }
 
 
+    /**
+     * プレイヤーがあがった情報を全員に通知する
+     * @param {*} hule 
+     */
+    sendHuleMsgToAll(hule){
+        for (var i = 0; i < 4; i++) {
+            this.players[i].sendMsg('hule', hule);
+        }
+    }
 }
 
 module.exports = Mahjong;

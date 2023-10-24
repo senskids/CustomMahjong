@@ -109,6 +109,11 @@ io.on('connection', (socket) => {
     socket.on('declare-tsumo', () => {
         game.declareTsumo(socket.id);
     });
+
+    // プレイヤーが確認したので次へ進むボタンを押した時の処理
+    socket.on('confirmed', () => {
+        game.doConfirm(socket.id);
+    });
     
     // 切断時の処理
     socket.on('disconnect', () => {

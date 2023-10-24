@@ -136,13 +136,15 @@ class Player{
         // 流し満貫判定
         if (!utils.yaojius.includes(utils.id2tile[tile])) this.is_drawn_mangan = false;
 
-        // フリテンの確認（立直してる場合は立直時にフリテン確認を行う）        
+        // 聴牌およびフリテンの確認（立直してる場合は立直時にフリテン確認を行う）        
         this.is_temporary_furiten = false;
         if (!this.is_riichi) {
             this.is_furiten = false;
-            // あがり牌を既に切っていればフリテン
             const winning_tiles = utils.getWinningTiles(this.hands, this.melds, null);
+            // あがれる牌があれば聴牌
             if (winning_tiles.length > 0){
+                this.is_tenpai = true;
+                // あがり牌を既に切っていればフリテン
                 for(var i = 0; i < winning_tiles.length; i++) 
                     if (this.essence_discards.includes(winning_tiles[i])) this.is_furiten = true;
             }
@@ -546,6 +548,9 @@ class Player{
     getDrawnMangan(){
         return this.is_drawn_mangan;
     }
+    getTenpai(){
+        return this.is_tenpai;
+    }
 
     /////////////////////////////////////////////
     /////////////////// Utils ///////////////////
@@ -595,7 +600,7 @@ class Player{
     /////////////////////////////////////////////
     RandomAi(event, data){
         // 行動できるアクションからランダムで選ぶ
-        console.log("[RandomAi] not implemented");
+        // console.log("[RandomAi] not implemented");
 
         if (event === 'diff-data'){
             if (data['action'] == 'discard'){
@@ -609,12 +614,18 @@ class Player{
                 }
             }
         }
+        else if (event === 'one-game-end') {
+            setTimeout(this.sayConfirm.bind(this), 300);
+        }
     }
     saySkip(){
         this.game_manager.notTurnPlayerDeclareAction(this.seat, "skip");
     }
     sayDiscard(){
         this.game_manager.discardTile(this.seat, this.hands[0]);
+    }
+    sayConfirm(){
+        this.game_manager.doConfirm(this.seat);
     }
 }
 

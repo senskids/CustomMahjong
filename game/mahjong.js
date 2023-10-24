@@ -9,6 +9,8 @@ class Mahjong {
         this.socket = socket;
         /** このゲームに参加しているプレイヤーの情報 */
         this.players = [];
+        /** プレイヤーからの（次へ進む）確認がとれているか */
+        this.player_confirm_responses = [false, false, false, false];
         /** 全ての牌の数 */
         this.all_tile_num = 136;
         /** 非公開の牌のid (裏側の牌) */
@@ -128,6 +130,22 @@ class Mahjong {
         console.log("[mahjong.js, removePlayer] %s is removed", this.players[p].getUserName());
         this.players[p].setActive(false);
         return true;
+    }
+
+
+    /** 
+     * プレイヤーが「確認し次へ進むボタン」を押したので、全員が確認してたら次の処理に進む
+     * @param {String} socket_id  確認し次へ進むボタンを押したプレイヤーのSocketID
+     */
+    doConfirm(socket_id) {
+        const p = this.#whoAction(socket_id);
+        this.player_confirm_responses[p] = true;
+        // 全員が確認ボタンを押したら次の処理に進む
+        if (this.player_confirm_responses.every(Boolean)) {
+            if (this.next_process_info.func === this.forwardGame) {
+                setTimeout(this.forwardGame.bind(this), 10, this.next_process_info["opt"]["win"], this.next_process_info["opt"]["special"]);
+            }
+        }
     }
 
 
@@ -344,7 +362,7 @@ class Mahjong {
         if (this.#checkSufurenda()){
             for(var i = 0; i < 4; i++) this.players[i].resetEnableActions();
             this.sendDiscardMsgToAll(p, discard_tile, is_tsumo_giri);
-            setTimeout(this.drawnGame.bind(this), 10, true);  // 流局
+            setTimeout(this.drawnGame.bind(this), 10, "sufurenda");  // 流局
             return;
         }
 
@@ -390,8 +408,8 @@ class Mahjong {
 
                 // 4人立直流局チェック
                 let riichis = [...Array(4)].map((_,i) => this.players[i].getIsRiichi());
-                if (riichis.every(v=>v)){  // 全員が流局している
-                    setTimeout(this.drawnGame.bind(this), 10);  // 流局
+                if (riichis.every(v=>v)){  // 全員が立直している
+                    setTimeout(this.drawnGame.bind(this), 10, "4riichi");  // 流局
                     return;
                 }
             }
@@ -442,7 +460,7 @@ class Mahjong {
         }
         else if (action_type == 'drawn'){
             if (utils.canNineDiffTerminalTiles(player.getHands()))
-                this.drawnGame(true);
+                this.drawnGame("9diff9tile");
         }
         return;
     }
@@ -805,7 +823,7 @@ class Mahjong {
 
         // 4回槓された際の流局判定（2人以上がカンしている時は流局、1人で4カンは続行）
         if (this.kans.length == 4 && !this.kans.every(item => item['player'] == this.kans[0]['player'])) {
-            setTimeout(this.drawnGame.bind(this), 2000, [], true)
+            setTimeout(this.drawnGame.bind(this), 2000, [], "4kan")
             return; 
         }
 
@@ -873,10 +891,11 @@ class Mahjong {
         }
         // 点数を取得する
         console.log(player.getHuleInfo());
-        this.sendHuleMsgToAll(player.getHuleInfo());
-        
-        // 次のゲームに進む
-        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [p], false);
+
+        // 全員がOKボタンを押した時に次のゲームがスタートするようにする
+        this.player_confirm_responses = [false, false, false, false];
+        this.next_process_info = {"func": this.forwardGame, "opt": {"win":p, "special":false}};
+        this.sendOneGameEndMsgToAll([player.getHuleInfo()]);
     }
 
 
@@ -888,36 +907,60 @@ class Mahjong {
      * @next forwardGame  FIXME : あがり画面に移行するようにする
      */
     performRon(ron_players, roned_player, roned_tile){
+        let send_msg = [];
+
         for (var i = 0; i < ron_players.length; i++){
             let ron_player = ron_players[i].player;
-
-            console.log(this.players[ron_player].getHuleInfo());
-            this.sendHuleMsgToAll(this.players[ron_player].getHuleInfo());
+            send_msg.push(this.players[ron_player].getHuleInfo());
         }
-        // 次のゲームに進む
-        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, ron_players, false);
+
+        // 全員がOKボタンを押した時に次のゲームがスタートするようにする
+        this.player_confirm_responses = [false, false, false, false];
+        this.next_process_info = {"func": this.forwardGame, "opt": {"win":ron_players, "special":false}};
+        this.sendOneGameEndMsgToAll(send_msg);
     }
 
 
     /**
      * 流局時の処理を実行する  FIXME : 流し満貫など
-     * @param {Boolean} is_special  特殊な流れ方（九種九牌など）したか
+     * @param {String or null} is_special  特殊な流れ方（九種九牌など）したか
      * @next forwardGame 
      */
-    drawnGame(is_special = false){
-        console.log("流局");
+    drawnGame(is_special = null){
+        let send_msg = [];
 
-        // 流し満貫チェック
-        for (var i = 0; i < 4; i++) {
-            if (this.players[i].getDrawnMangan()){
-                this.sendHuleMsgToAll(`プレイヤー${i}：流し満貫`);
-                // 点棒やりとり fixme
-            }
+        if (is_special != null){
+            // 点棒やりとり fixme
+            let diff_scores = [0, 0, 0, 0];
+            send_msg.push({'msg': is_special, 'diff-score':diff_scores});
         }
-        
-        // 聴牌チェック fixme
-
-        this.timeout_id = setTimeout(this.forwardGame.bind(this), 2000, [], false);
+        else {
+            // 流し満貫チェック
+            for (var i = 0; i < 4; i++) {
+                if (this.players[i].getDrawnMangan()){
+                    // 点棒やりとり fixme
+                    let diff_scores;
+                    if (i == this.cplayer_idx) diff_scores = [...Array(4)].map((_,j) => (i == j)? 12000:-4000);
+                    else diff_scores = [...Array(4)].map((_,j) => (i == j)? 8000:((j == this.cplayer_idx)?-4000:-2000));
+                    send_msg.push({'msg': `プレイヤー${i}：流し満貫`, 'diff-score':diff_scores});
+                }
+            }
+            
+            // 聴牌チェック
+            // 聴牌のプレイヤーの数から何点やりとりするか求める
+            let tenpai_player_num = 0;
+            for (var i = 0; i < 4; i++) if (this.players[i].getTenpai()) tenpai_player_num += 1;
+            let plus_score = [0, 3000, 1500, 1000, 0][tenpai_player_num];
+            let minus_score = [0, -1000, -1500, -3000, 0][tenpai_player_num];
+            // スコアの変動
+            let diff_scores = [...Array(4)].map((_,i) => (this.players[i].getTenpai())? plus_score: minus_score);  
+            // 聴牌の手牌も見せるようにする
+            send_msg.push({'msg':`流局`, 'diff-score':diff_scores});
+        }
+        // 全員がOKボタンを押した時に次のゲームがスタートするようにする
+        this.player_confirm_responses = [false, false, false, false];
+        this.next_process_info = {"func": this.forwardGame, "opt": {"win":[], "special":is_special != null}};
+        this.sendOneGameEndMsgToAll(send_msg);
     }
 
 
@@ -1121,12 +1164,12 @@ class Mahjong {
 
 
     /**
-     * プレイヤーがあがった情報を全員に通知する
-     * @param {*} hule 
+     * 1局が終わった際に、その結果を全員に通知する
+     * @param {Array} results
      */
-    sendHuleMsgToAll(hule){
+    sendOneGameEndMsgToAll(results){
         for (var i = 0; i < 4; i++) {
-            this.players[i].sendMsg('hule', hule);
+            this.players[i].sendMsg('one-game-end', results);
         }
     }
 }

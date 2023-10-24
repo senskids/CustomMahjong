@@ -349,8 +349,9 @@ socket.on('cannot-discard-tile', (tile_id) => {
 });
 
 
-socket.on('hule', (hule) => {
-    console.log(hule);
+socket.on('one-game-end', (results) => {
+    console.log(results);
+    socket.emit('confirmed', null);
 });
 
 

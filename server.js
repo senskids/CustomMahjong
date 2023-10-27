@@ -55,6 +55,10 @@ io.on('connection', (socket) => {
         if (login_users[data.user_id]) {
             login_users[data.user_id].socketid = socket.id;
             game.addPlayer(login_users[data.user_id].user_name, socket.id, login_users[data.user_id].user_id);
+            // ログインすると三秒後にゲームスタート
+            setTimeout(() => {
+                game.startGame();
+            }, 3000);
         } else {
             // ログインしていない場合はログインページにリダイレクト
             socket.emit('login-failure', { msg: "not login" })

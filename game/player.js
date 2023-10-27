@@ -497,7 +497,7 @@ class Player{
         return this.user_id;
     }
     getUserName(){
-        return (this.is_active)? this.user_name+"<br>"+this.getOwnWind(this.seat): this.user_name + "(cpu)"+"<br>"+this.getOwnWind(this.seat);
+        return (this.is_active)? this.user_name+" "+this.getOwnWind(this.seat): this.user_name + "(cpu)"+" "+this.getOwnWind(this.seat);
     }
     getActive(){
         return this.is_active;
@@ -526,16 +526,16 @@ class Player{
     getOwnWind(user_wind){
         switch(this.seat){
             case 0:
-                user_wind = "東";
+                user_wind = "<a class=\"player_wind\">東</a>";
                 break;
             case 1:
-                user_wind = "南";
+                user_wind = "<a class=\"player_wind\">南</a>";
                 break;
             case 2:
-                user_wind = "西";
+                user_wind = "<a class=\"player_wind\">西</a>";
                 break;
             case 3:
-                user_wind = "北";
+                user_wind = "<a class=\"player_wind\">北</a>";
                 break;
         }
         return user_wind;

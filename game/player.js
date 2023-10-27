@@ -110,19 +110,19 @@ class Player{
      * 手牌からtileを捨てる
      * @param {Array} tile              捨てる牌（タイルID表現）
      * @param {Boolean} is_riichi_turn  立直したターンかどうか
-     * @returns 正しく捨てられたか否か
+     * @returns {Boolean, Boolean}      正しく捨てられたか否か, ツモ切りか否か
      */
     discardTile(tile, is_riichi_turn = false){
         if (this.forbidden_discards.includes(tile)){
             console.log("[ERROR, discardTile, B] 捨ててはいけない牌を捨てようとした");
             this.sendMsg('cannot-discard-tile', tile);
-            return false;
+            return [false, false];
         }
         const idx = this.hands.indexOf(tile);
         if (idx < 0) {
             console.log("[ERROR, discardTile, C] 手牌にない牌を捨てようとした");
             this.sendMsg('cannot-discard-tile', null);
-            return false;
+            return [false, false];
         }
         this.hands.splice(idx, 1);
         this.sortHands();
@@ -152,7 +152,7 @@ class Player{
             this.is_temporary_furiten = true; 
             if (this.is_riichi) this.is_furiten = true;
         }
-        return true;
+        return [true, idx == this.hands.length];
     }    
 
 

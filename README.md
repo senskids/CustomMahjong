@@ -23,17 +23,18 @@
 4. Local ```git checkout -b feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
 5. この状態で機能実装
 #### 機能実装後
-6. Local 機能実装してcommit -m "#(ISSUE番号):コミットメッセージ"
+6. Local 機能実装して ```git commit -m "#(ISSUE番号):コミットメッセージ"```
 7. Local ```git checkout develop```
 8. Local ```git pull origin develop```
 9. Local ```git checkout feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
 10. Local ```git rebase develop```
 11. Local ```git push origin feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```  無理な場合は-f
-12. Github feature/#(ISSUE番号)/(ISSUEの簡潔な内容) => developへのPull requestを作成
-13. Github チェック後、マージ、originのfeature/#(ISSUE番号)/(ISSUEの簡潔な内容)ブランチを削除
-14. Github ISSUEをクローズする
-15. Local ```git checkout develop```
-16. Local ```git fetch --prune```
-17. Local ```git pull origin develop```
-18. Local ```git branch -D feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
-19. 1に戻る
+13. Github feature/#(ISSUE番号)/(ISSUEの簡潔な内容) => developへのPull requestを作成
+14. Github 作成したPull requestのDevelopmentからISSUEとの紐づけを実施
+15. Github チェック後、マージ、originのfeature/#(ISSUE番号)/(ISSUEの簡潔な内容)ブランチを削除
+16. Github ISSUEをクローズする
+17. Local ```git checkout develop```
+18. Local ```git fetch --prune```
+19. Local ```git pull origin develop```
+20. Local ```git branch -D feature/#(ISSUE番号)/(ISSUEの簡潔な内容)```
+21. 1に戻る

@@ -336,14 +336,14 @@ class Mahjong {
             return;
         }
 
-        let actRes = this.players[p].discardTile(discard_tile, is_riichi_turn);
+        let [actRes, is_tsumo_giri] = this.players[p].discardTile(discard_tile, is_riichi_turn);
         // 何かしら問題があって牌を捨てる行為に失敗した場合はreturn
         if (!actRes) return;
 
         // 四風連打の処理
         if (this.#checkSufurenda()){
             for(var i = 0; i < 4; i++) this.players[i].resetEnableActions();
-            this.sendDiscardMsgToAll(p, discard_tile);
+            this.sendDiscardMsgToAll(p, discard_tile, is_tsumo_giri);
             setTimeout(this.drawnGame.bind(this), 10, true);  // 流局
             return;
         }
@@ -358,7 +358,7 @@ class Mahjong {
         this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
 
         // 全ユーザに情報を送る
-        this.sendDiscardMsgToAll(p, discard_tile);
+        this.sendDiscardMsgToAll(p, discard_tile, is_tsumo_giri);
 
         // 明槓などで新ドラをオープンする
         if(this.is_open_next_dora){
@@ -1057,13 +1057,15 @@ class Mahjong {
      * discard_playerがdiscard_tileを捨てたことを全員に通知する
      * @param {*} draw_player 
      * @param {*} draw_tile 
+     * @param {*} is_tsumo_giri 
      */
-    sendDiscardMsgToAll(discard_player, discard_tile){
+    sendDiscardMsgToAll(discard_player, discard_tile, is_tsumo_giri){
         // 全ユーザに情報を送る
         for(var i = 0; i < 4; i++){
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
-                action: 'discard',  
+                action: 'discard',
+                is_tsumo_giri: is_tsumo_giri,
                 player: (discard_player - i + 4) % 4,  // player iから見てどこか
                 tile: discard_tile,
             });

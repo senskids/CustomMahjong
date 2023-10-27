@@ -100,6 +100,7 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
                 socket.emit('discard-tile', tile);
             })
         }
+
         // 最後の牌には新たなクラスを付与する。自分の牌と他の人の牌でスペースの空き方を変える
         if ((idx == tiles.length - 1) && is_current && is_draw) {
             if(is_listener){
@@ -207,8 +208,15 @@ socket.on('diff-data', (data) => {
             handTiles[data.player].sort((a, b) => a - b);
         }
         else if (data.player != 0){
-            var rand = Math.floor(Math.random() * handTiles[data.player].length);
-            handTiles[data.player].splice(rand, 1);  // 自摸切りを分ける  FIXME
+            let discardIdx = -1;
+            if(data.is_tsumo_giri){
+                discardIdx = handTiles[data.player].length - 1;
+                console.log("tumogiri:", data.is_tsumo_giri);
+            }
+            else {
+                discardIdx = Math.floor(Math.random() * (handTiles[data.player].length - 1));
+            }
+            handTiles[data.player].splice(discardIdx, 1);
         }
         else 
             console.log("[ERROR C]");
@@ -250,7 +258,7 @@ socket.on('diff-data', (data) => {
                     var rand = Math.floor(Math.random() * handTiles[p].length);
                     handTiles[p].splice(rand, 1);
                 }
-        });        
+        });
         if (data.action == 'ankan') {
             meldTiles[p].push({'from_who': null, 'discard': null, 'melds': meld_info.hands});
         }

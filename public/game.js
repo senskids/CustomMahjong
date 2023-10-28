@@ -42,6 +42,13 @@ const wallEl = document.querySelector('wall-tiles');
 
 const tileNum = document.getElementById('tiles-num');
 let currentTilesNum = 136;
+const resultView = {
+    "main":document.getElementById('result-area'),
+    "hands":document.getElementById('result-hands-area'),
+    "melds":document.getElementById('result-melds-area'),
+    "yaku":document.getElementById('result-yaku-area'),
+    "score":document.getElementById('result-score-area'),
+}
 
 // 牌を引いたかを判定するフラグ
 let is_Draw = false;
@@ -349,8 +356,55 @@ socket.on('cannot-discard-tile', (tile_id) => {
 });
 
 
-socket.on('hule', (hule) => {
-    console.log(hule);
+socket.on('one-game-end', (results) => {
+    console.log(results);
+    let i = 0; // インデックスを初期化
+
+    function displayResult() {
+        if (i < results.length) {
+            const result = results[i];
+            console.log(results);
+            resultView["main"].style.display = "block";
+            resultView["main"].style.backgroundColor = "#ff0000a0";
+
+            if (["ron", "tsumo"].includes(result.type)){
+                result.hands.push((result.type == "tsumo")? result.tsumo: result.discard);
+                renderTiles(resultView["hands"], result.hands, "60px", false);
+                renderMeldTiles(resultView["melds"], meldTiles[result.winp], "60px");  // fixme
+                resultView["yaku"].innerHTML = "";
+                for (var j = 0; j < result.hule.hupai.length; j++) resultView["yaku"].innerHTML += `<p>${result.hule.hupai[j].name}</p>`;
+                resultView["score"].innerHTML = result.hule.defen;
+            }
+            else if ("drawn" == result.type){
+                // 聴牌の人（自分以外）の手牌を可視化      
+                resultView["main"].style.backgroundColor = "#ffffff30";
+                resultView["yaku"].innerHTML = "";
+                for (var j = 0; j < result.tenpais.length; j++) {
+                    let player = result.tenpais[j].player;
+                    let hands = result.tenpais[j].hands;
+                    if (player != 0) 
+                        renderTiles(handEls[player], hands, "30px", false, false, false);
+                }        
+            }
+            else if ("drawn-mangan") {
+                resultView["yaku"].innerHTML = "<p>流し満貫</p>";
+                // resultView["score"].innerHTML = result.hule.defen;
+            }
+            else {
+                resultView["main"].innerHTML = result.type;
+            }
+            i++; // インデックスを進める
+        } else {
+            resultView["main"].style.display = "none";
+            socket.emit('confirmed', null); // iが最後まで到達したらsocket.emitを送信
+        }
+    }
+
+    // 初回の呼び出し
+    displayResult();
+
+    // resultView要素をクリックしたときに次の結果を表示
+    resultView["main"].addEventListener('click', displayResult);
 });
 
 

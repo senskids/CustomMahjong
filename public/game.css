@@ -281,3 +281,15 @@
   margin: auto;
   border: solid;
 }
+
+
+/* あがり結果画面 */
+#result-area{
+  display: none;
+  position: absolute;
+  top:5%;
+  left:5%;
+  width:90%;
+  height:90%;
+  background-color: #ff0000a0;
+}

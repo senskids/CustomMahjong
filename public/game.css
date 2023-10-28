@@ -103,6 +103,10 @@
     height: calc(13% * (1500 / 900));  /* width / aspect*/
   }
 
+  .meld-area{
+    padding-left: 1rem;
+  }
+
   #my-discard-area {
     position: absolute;
     top: 50%;

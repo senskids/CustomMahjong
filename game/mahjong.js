@@ -880,7 +880,7 @@ class Mahjong {
     /**
      * ツモあがりを実行する
      * @param {String} socket_id   ツモあがりする人のsocket id
-     * @next forwardGame  FIXME : あがり画面に移行するようにする
+     * @next forwardGame
      */
     performTsumo(socket_id){
         let p = this.#whoAction(socket_id);  
@@ -890,12 +890,17 @@ class Mahjong {
             return;
         }
         // 点数を取得する
-        console.log(player.getHuleInfo());
+        let hule = player.getHuleInfo();
+        console.log(hule);
+        let hands = player.getHands();
+        let tsumo = hands[hands.length - 1];
+        hands = hands.slice(0, hands.length - 1);
+        let diff_scores = hule.fenpei;
 
         // 全員がOKボタンを押した時に次のゲームがスタートするようにする
         this.player_confirm_responses = [false, false, false, false];
-        this.next_process_info = {"func": this.forwardGame, "opt": {"win":p, "special":false}};
-        this.sendOneGameEndMsgToAll([player.getHuleInfo()]);
+        this.next_process_info = {"func": this.forwardGame, "opt": {"win":[p], "special":false}};
+        this.sendOneGameEndMsgToAll([{"type": "tsumo", "winp":p, "hule":hule, "hands":hands, "tsumo":tsumo, "diff_score":diff_scores}]);
     }
 
 
@@ -904,20 +909,25 @@ class Mahjong {
      * @param {Array} ron_players    ロンあがりするプレイヤー（複数人OK）
      * @param {Number} roned_player  ロンあがりされたプレイヤー
      * @param {Number} roned_tile    ロンされた牌
-     * @next forwardGame  FIXME : あがり画面に移行するようにする
+     * @next forwardGame
      */
     performRon(ron_players, roned_player, roned_tile){
         let send_msg = [];
 
         for (var i = 0; i < ron_players.length; i++){
-            let ron_player = ron_players[i].player;
-            send_msg.push(this.players[ron_player].getHuleInfo());
+            const player = this.players[ron_players[i].player];
+            let hule = player.getHuleInfo();
+            console.log(hule);
+            let hands = player.getHands();
+            let discard = roned_tile;
+            let diff_scores = hule.fenpei;
+            send_msg.push({"type": "ron", "winp":ron_players[i], "hule":hule, "hands":hands, "discard":discard, "diff_score":diff_scores});
         }
 
         // 全員がOKボタンを押した時に次のゲームがスタートするようにする
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":ron_players, "special":false}};
-        this.sendOneGameEndMsgToAll(send_msg);
+        this.sendOneGameEndMsgToAll(send_msg, "ron");
     }
 
 
@@ -932,7 +942,7 @@ class Mahjong {
         if (is_special != null){
             // 点棒やりとり fixme
             let diff_scores = [0, 0, 0, 0];
-            send_msg.push({'msg': is_special, 'diff-score':diff_scores});
+            send_msg.push({"type": is_special, "diff_score":diff_scores});
         }
         else {
             // 流し満貫チェック
@@ -942,7 +952,7 @@ class Mahjong {
                     let diff_scores;
                     if (i == this.cplayer_idx) diff_scores = [...Array(4)].map((_,j) => (i == j)? 12000:-4000);
                     else diff_scores = [...Array(4)].map((_,j) => (i == j)? 8000:((j == this.cplayer_idx)?-4000:-2000));
-                    send_msg.push({'msg': `プレイヤー${i}：流し満貫`, 'diff-score':diff_scores});
+                    send_msg.push({"type": "drawn-mangan", "winp":i, "diff_score":diff_scores});
                 }
             }
             
@@ -953,14 +963,20 @@ class Mahjong {
             let plus_score = [0, 3000, 1500, 1000, 0][tenpai_player_num];
             let minus_score = [0, -1000, -1500, -3000, 0][tenpai_player_num];
             // スコアの変動
-            let diff_scores = [...Array(4)].map((_,i) => (this.players[i].getTenpai())? plus_score: minus_score);  
-            // 聴牌の手牌も見せるようにする
-            send_msg.push({'msg':`流局`, 'diff-score':diff_scores});
+            let diff_scores = [...Array(4)].map((_,i) => this.players[i].getTenpai()? plus_score: minus_score);
+            let tenpais = [];
+            for (var i = 0; i < 4; i++){
+                if (this.players[i].getTenpai()){
+                    tenpais.push({"player":i, "hands":this.players[i].getHands()});
+                }
+            }
+            send_msg.push({"type": "drawn", "diff_score":diff_scores, "tenpais":tenpais});
         }
         // 全員がOKボタンを押した時に次のゲームがスタートするようにする
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":[], "special":is_special != null}};
-        this.sendOneGameEndMsgToAll(send_msg);
+        console.log(send_msg);
+        this.sendOneGameEndMsgToAll(send_msg, "drawn");
     }
 
 
@@ -1169,7 +1185,19 @@ class Mahjong {
      */
     sendOneGameEndMsgToAll(results){
         for (var i = 0; i < 4; i++) {
-            this.players[i].sendMsg('one-game-end', results);
+            let res = [];
+            for (var j = 0; j < results.length; j++) {
+                let tmp = JSON.parse(JSON.stringify(results[j]));
+                tmp.diff_score = (tmp.diff_score.concat(tmp.diff_score)).slice(i, i + 4);
+                if (["tsumo", "ron", "drawn-mangan"].includes(tmp.type)) tmp.winp = (tmp.winp - i + 4) % 4;
+                else if (tmp.type == "drawn") {
+                    for (var k = 0; k < tmp.tenpais.length; k++) {
+                        tmp.tenpais[k].player = (tmp.tenpais[k].player - i + 4) % 4;
+                    }
+                }
+                res.push(tmp);
+            }
+            this.players[i].sendMsg('one-game-end', res);
         }
     }
 }

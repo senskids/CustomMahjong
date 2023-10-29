@@ -31,9 +31,9 @@
 
   .main-container {
     margin-top: 3px;
-     width: 100%;
-     display: flex;
-     background-color: #eeeeeeff;
+    width: 100%;
+    display: flex;
+    background-color: #eeeeeeff;
   }
   
   #game-board {
@@ -101,6 +101,10 @@
     left: 0%;  /* left + widtgh */
     width: calc(70% * (900 / 1500));  /* height / aspect*/
     height: calc(13% * (1500 / 900));  /* width / aspect*/
+  }
+
+  .meld-area{
+    padding-left: 1rem;
   }
 
   #my-discard-area {
@@ -260,6 +264,26 @@
     box-shadow:
       inset -2px -2px 3px rgba(255, 255, 255, 0.6),
       inset 2px 2px 3px rgba(0, 0, 0, 0.6);
+  }
+
+  #reload{
+    position: absolute;
+    top: 3%;
+    left: 95%;
+    background-color: rgb(219, 219, 219);
+    border-radius: 15%;
+    padding: 5px;
+  }
+  #point{
+    text-align: center;
+    width: 30%;
+    margin-left: 3rem;
+    padding-top: 2rem;
+  }
+  #point .pointTitle{
+    background-color: white;
+    font-size: 2rem;
+    padding: 2rem 0rem 6rem 0rem;
   }
 
   .last-my-tile{

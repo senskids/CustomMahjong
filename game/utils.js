@@ -61,7 +61,7 @@ function convert2Majiang(hands = [], melds = [], tsumo = null) {
         let hs = info.hands.map((e, i) => (id2tile[e][1] != "0")? [parseInt(id2tile[e][1]) + 0.1 * i, id2tile[e][1]]: [4.5 + 0.1 * i, "0"]);
         if (info.from_who != null){  // 暗槓以外の場合
             let d = id2tile[info.discard];
-            let ap = ['', '-', '=', '+'][info.from_who];
+            let ap = ['', '+', '=', '-'][info.from_who];
             hs = hs.concat([(d[1] != "0")? [parseInt(d[1]) + 0.25, d[1] + ap]: [4.75, `0${ap}`]]);
         }
         hs.sort((a, b) => a[0] - b[0]);

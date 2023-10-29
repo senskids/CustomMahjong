@@ -329,10 +329,27 @@ class Player{
 
         // 捨てることは絶対できる
         this.enable_actions.discard = true;
-        if (kan_type == 'kan') return;  // 捨牌に対する槓なら捨てるだけ
         // ツモあがり可能かチェック
         this.hule_info = utils.canTsumo(this.hands, this.melds, tile, field_info);
-        if (this.hule_info != undefined && this.hule_info.defen != 0) this.enable_actions.tsumo = true;
+        if (this.hule_info != undefined && this.hule_info.defen != 0) {
+            this.enable_actions.tsumo = true;
+            // 大明槓からの嶺上開花の場合、槓された人の責任払いにする
+            if (kan_type == 'kan') {
+                // this.hule_info.fenpeiにおいて誰が責任払いであるか
+                let p1;  // fenpeiにおけるあがりプレイヤーの番号
+                let minus_total_point = 0;  // fenpeiの-点数の合計
+                for (var i = 0; i < 4; i++) {
+                    if (this.hule_info.fenpei[i] > 0) p1 = i;
+                    else {
+                        minus_total_point += this.hule_info.fenpei[i];
+                        this.hule_info.fenpei[i] = 0;
+                    }
+                }
+                let p2 = (p1 + this.melds[this.melds.length - 1].from_who) % 4;  // 1:下家、2:対面、3:上家
+                this.hule_info.fenpei[p2] = minus_total_point;
+            }
+        }
+        if (kan_type == 'kan') return;  // 捨牌に対する槓なら捨てるか嶺上開花だけ
         // リーチ可能かチェック
         if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
@@ -620,7 +637,7 @@ class Player{
         this.game_manager.notTurnPlayerDeclareAction(this.seat, "skip");
     }
     sayDiscard(){
-        this.game_manager.discardTile(this.seat, this.hands[0]);
+        this.game_manager.discardTile(this.seat, this.hands[this.hands.length - 1]);
     }
     sayConfirm(){
         this.game_manager.doConfirm(this.seat);

@@ -637,7 +637,7 @@ class Player{
         this.game_manager.notTurnPlayerDeclareAction(this.seat, "skip");
     }
     sayDiscard(){
-        this.game_manager.discardTile(this.seat, this.hands[this.hands.length - 1]);
+        this.game_manager.discardTile(this.seat, this.hands[0]);
     }
     sayConfirm(){
         this.game_manager.doConfirm(this.seat);

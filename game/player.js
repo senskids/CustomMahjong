@@ -172,6 +172,7 @@ class Player{
         // field_infoに自身の情報を付与する（嶺上ツモは別関数で処理するので、嶺上ツモで山牌が0になっても海底はつかない）
         field_info.menfeng = this.cmenfeng;
         if (this.is_riichi) field_info.hupai.lizhi = (this.is_double_riichi)? 2: 1;
+        else field_info.fubaopai = [];
         if (this.is_oneshot) field_info.hupai.yifa = true;  // 一発
         if (this.is_first_turn) field_info.hupai.tianhu = (this.cmenfeng == 0)? 1: 2;
         if (field_info.tile_num == 0) field_info.hupai.haidi = 1;
@@ -182,7 +183,7 @@ class Player{
         this.hule_info = utils.canTsumo(this.hands, this.melds, tile, field_info);
         if (this.hule_info != undefined && this.hule_info.defen != 0) this.enable_actions.tsumo = true;
         // リーチ可能かチェック
-        if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0 && field_info["tile_num"] >= 4) this.enable_actions.riichi = true;
+        if (this.is_menzen && !this.is_riichi && utils.canRiichi(this.hands, this.melds).length > 0 && field_info["tile_num"] >= 4 && this.point >= 1000) this.enable_actions.riichi = true;
         // 暗槓できるかチェック
         if (!this.is_riichi) { if (utils.canAnkan(this.hands).length > 0 && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true; }
         else { if (utils.canAnkanInRiichi(this.hands, this.melds, tile).length > 0 && field_info["kan_num"] < 4 && field_info["tile_num"] >= 1) this.enable_actions.kan = true; }
@@ -211,6 +212,7 @@ class Player{
         // field_infoに自身の情報を付与する
         field_info.menfeng = this.cmenfeng;
         if (this.is_riichi) field_info.hupai.lizhi = (this.is_double_riichi)? 2 : 1;
+        else field_info.fubaopai = [];
         if (this.is_oneshot) field_info.hupai.yifa = true;         // 一発
         if (this.is_first_turn) field_info.hupai.tianhu = 3;       // 人和
         if (field_info.tile_num == 0) field_info.hupai.haidi = 2;  // 暗槓の捨牌などでも河底捨牌
@@ -274,6 +276,7 @@ class Player{
         field_info.menfeng = this.cmenfeng;
         field_info.hupai.qianggang = true;  // 槍槓
         if (this.is_riichi) field_info.hupai.lizhi = (this.is_double_riichi)? 2 : 1;
+        else field_info.fubaopai = [];
         if (this.is_oneshot) field_info.hupai.yifa = true;  // 一発
         if (this.is_first_turn) field_info.hupai.tianhu = 3;
 
@@ -449,7 +452,7 @@ class Player{
      * 立直を実行する（内部を立直状態にする）
      * @param {Number} hand_tile   手牌から抜き出す牌（タイルID表現）
      */
-    performRiichi(hand_tile){
+    declareRiichi(hand_tile){
         this.is_riichi = true;
         this.is_oneshot = true;
         if (this.is_first_turn) this.is_double_riichi = true;
@@ -499,7 +502,7 @@ class Player{
         return this.user_id;
     }
     getUserName(){
-        return (this.is_active)? this.user_name+" "+this.getOwnWind(this.seat): this.user_name + "(cpu)"+" "+this.getOwnWind(this.seat);
+        return (this.is_active)? this.user_name: this.user_name + "(cpu)";
     }
     getActive(){
         return this.is_active;
@@ -525,22 +528,8 @@ class Player{
     getEnableActions(){
         return this.enable_actions;
     }
-    getOwnWind(user_wind){
-        switch(this.seat){
-            case 0:
-                user_wind = "<a class=\"player_wind\">東</a>";
-                break;
-            case 1:
-                user_wind = "<a class=\"player_wind\">南</a>";
-                break;
-            case 2:
-                user_wind = "<a class=\"player_wind\">西</a>";
-                break;
-            case 3:
-                user_wind = "<a class=\"player_wind\">北</a>";
-                break;
-        }
-        return user_wind;
+    getOwnWind(){
+        return ["東", "南", "西", "北"][this.seat];
     }
     getHuleInfo(){
         return this.hule_info;
@@ -550,6 +539,15 @@ class Player{
     }
     getTenpai(){
         return this.is_tenpai;
+    }
+    /**
+     * 点棒をやりとりする
+     * @param {Number} diff_point  点棒の差分（+：もらう、-：払う）
+     * @return {Boolean}  持ち点が0点以上かどうか（true：0点以上、false：マイナス）
+     */
+    setDiffPoint(diff_point){
+        this.point += diff_point;
+        return this.point >= 0;
     }
 
     /////////////////////////////////////////////

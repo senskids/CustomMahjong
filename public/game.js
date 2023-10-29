@@ -32,7 +32,9 @@ actions.forEach(action => {
     });    
 });
 
-const nameEls = idx2player_map.map(p => document.getElementById(`${p}-name`));
+// playerInfoEls[playerIdx]["name" or "point" or "wind"]
+const playerInfoEls = idx2player_map.map(p => {return {"name":document.getElementById(`${p}-name`), 
+"point":document.getElementById(`${p}-point`), "wind":document.getElementById(`${p}-wind`)}});
 const handEls = idx2player_map.map(p => document.getElementById(`${p}-hand-tiles`));
 const discardEls = idx2player_map.map(p => document.getElementById(`${p}-discard-tiles`));
 const meldEls = idx2player_map.map(p => document.getElementById(`${p}-meld-tiles`));
@@ -186,6 +188,9 @@ socket.on('data', (data) => {
 
     // ドラ
     doraTiles = data.doraTiles.value;
+
+    // 点数
+    for (var i = 0; i < 4; i++) playerInfoEls[i]["point"] = 25000;
 
     // 牌を描画する
     for(var i = 0; i < 4; i++){
@@ -408,9 +413,18 @@ socket.on('one-game-end', (results) => {
 });
 
 
+socket.on('point', (points) => {
+    for (var i = 0; i < points.length; i++){
+        playerInfoEls[i]["point"].innerHTML = points[i];
+    }
+});
+
+
 socket.on('game-status', (data) => {
+    // data.seat : 起家は誰か（fixme : 誰が本局の親（東）かに変える）
     data.names.forEach((e, i)=>{
-        nameEls[i].innerHTML = e;
+        playerInfoEls[i]["name"].innerHTML = e;
+        playerInfoEls[i]["wind"].innerHTML = ["東", "南", "西", "北"][(i + data.seat + 4) % 4];
     });
 });
 

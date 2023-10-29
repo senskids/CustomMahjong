@@ -253,12 +253,12 @@ exports.canTsumo = function(hands, melds, tsumo, field_info){
  * @param {Array} myhands         プレイヤーの手牌、ツモ牌も含む（タイルID表現） 
  * @param {Array} mymelds         プレイヤーの鳴き牌（鳴き牌表現） 
  * @param {Number} discard        捨牌のタイルID
- * @param {Number} seat_relation  プレイヤーと捨牌プレイヤーの座席関係（0～3）
+ * @param {Number} seat_relation  プレイヤーと捨牌プレイヤーの座席関係（0:自分、1:下家、2:対面、3:上家）
  * @param {JSON} field_info       FIXME
  * @returns {*}      Majiangライブラリのhule情報（json）
  */
 exports.canRon = function(myhands, mymelds, discard, seat_relation, field_info){
-    const d_tile = id2tile[discard] + ["","-","=","+"][seat_relation];
+    const d_tile = id2tile[discard] + ["","+","=","-"][seat_relation];  // +:下家、=:対面、-:上家
     const obj = getObj(field_info);
     let ret = Majiang.Util.hule(convert2Majiang(myhands, mymelds, null), d_tile, obj);
     // 人和の反映（Majiangライブラリに実装されていない）

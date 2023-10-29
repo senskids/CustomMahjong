@@ -45,7 +45,7 @@
     /* margin: auto; */
     background-color: rgba(0, 128, 0, 0.664);
   }
-  .player-name{
+  .player-info-area{
     background-color: rgb(224, 224, 224);
     display: inline-block;
     border-radius: 10%;
@@ -55,8 +55,20 @@
     margin: 1%;
     padding: 0.5rem;
   }
-  .player_wind{
+  .player-info{
+    display: flex;
+  }
+  .player-name{
+    margin: 0 5px 0 5px;
+    color: black;
+  }
+  .player-wind{
+    margin: 0 5px 0 5px;
     color: blue;
+  }
+  .player-point{
+    margin: 0 5px 0 5px;
+    color: black;
   }
 
   #my-main-area {

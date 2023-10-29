@@ -46,29 +46,45 @@
     background-color: rgba(0, 128, 0, 0.664);
   }
   .player-info-area{
-    background-color: rgb(224, 224, 224);
+    background-color: rgba(219, 219, 219, 0.7);
     display: inline-block;
+    min-inline-size: 100px;
+    writing-mode: horizontal-tb; 
     border-radius: 10%;
     font-weight: bold;
     font-size: medium;
-    color: black;
-    margin: 1%;
-    padding: 0.5rem;
+    padding-bottom: 0.3rem;
   }
   .player-info{
+    opacity: 100%;
+  }
+  .player-status{
     display: flex;
+    justify-content: space-around;
+    padding: 5% 0% 5% 0%;
+    margin-bottom: 5%;
+    background-color: rgba(110, 110, 173, 0.925);
+    border-radius: 10%;
+  }
+  .player-wind{
+    color: white;
+  }
+  .player-point{
+    text-align: right;
+    display: inline-block;
+    min-inline-size: 50px;
+    writing-mode: horizontal-tb; 
+    padding: 2% 6%;
+    background-color: rgba(26, 26, 61, 0.555);
+    border-radius: 10%;
+    color: white;
+    font-size: small;
+    font-weight: lighter;
   }
   .player-name{
     margin: 0 5px 0 5px;
-    color: black;
-  }
-  .player-wind{
-    margin: 0 5px 0 5px;
-    color: blue;
-  }
-  .player-point{
-    margin: 0 5px 0 5px;
-    color: black;
+    color: #000;
+    /* color: rgb(252, 252, 19); */
   }
 
   #my-main-area {

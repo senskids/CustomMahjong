@@ -189,9 +189,6 @@ socket.on('data', (data) => {
     // ドラ
     doraTiles = data.doraTiles.value;
 
-    // 点数
-    for (var i = 0; i < 4; i++) playerInfoEls[i]["point"] = 25000;
-
     // 牌を描画する
     for(var i = 0; i < 4; i++){
         renderTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false);

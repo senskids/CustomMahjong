@@ -136,3 +136,37 @@ exports.createDrawnManganTiles = function(){
     return tiles;
 }
 
+
+// 嶺上開花大明槓責任払い確認用
+exports.createLingshangBaojiaTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    let inits = [
+        [0 ,  1,  2, 4, 8, 12, 108, 109, 110, 72, 76, 80, 60], 
+        [3, 125, 16, 17, 18, 24, 28, 32, 36, 40, 44, 76, 77],
+        [1, 16, 17, 18, 24, 25, 26, 32, 33, 34, 40, 41, 42],
+        [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 128], 
+    ];
+    for (var p = 0; p < 4; p++){
+        for (var i = 0; i < 13; i++)
+            tiles[p * 13 + i] = inits[p][i];
+    }
+    return tiles;
+}
+
+
+// 大三元大明槓責任払い確認用
+exports.createBaojiaTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    let inits = [
+        [124, 125, 128, 129, 135, 134, 0, 1, 2, 4, 5, 6, 108], 
+        [126, 130, 12, 17, 18, 24, 28, 32, 36, 40, 44, 76, 77],
+        [1, 16, 17, 18, 24, 25, 26, 32, 33, 34, 40, 41, 42],
+        [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 128], 
+    ];
+    for (var p = 0; p < 4; p++){
+        for (var i = 0; i < 13; i++)
+            tiles[p * 13 + i] = inits[p][i];
+    }
+    return tiles;
+}
+

@@ -25,6 +25,8 @@ class Mahjong {
         this.round_count = 0;   // 1局 
         /** 現在の場 */
         this.honba_count = 0;   // 0本場
+        /** 供託の立直棒の数 */
+        this.riichi_bar_count = 0;   
         /** この局の親のインデックス */
         this.parent_idx = 0;
 
@@ -404,14 +406,12 @@ class Mahjong {
         if (this.tiles.length > 0) {
             // ターンプレイヤーが今立直したかどうかチェック
             if (is_riichi_turn) {
-                // FIXME : 点棒を供託に出す処理
-
-                // 4人立直流局チェック
-                let riichis = [...Array(4)].map((_,i) => this.players[i].getIsRiichi());
-                if (riichis.every(v=>v)){  // 全員が立直している
+                // 立直棒を供託に出す
+                let is_4riichi = this.performRiichi(this.cplayer_idx);
+                if (is_4riichi) {
                     setTimeout(this.drawnGame.bind(this), 10, "4riichi");  // 流局
                     return;
-                }
+                };
             }
             this.cplayer_idx = (this.cplayer_idx + 1) % this.players.length;
             setTimeout(this.drawTile.bind(this), 10);
@@ -427,7 +427,7 @@ class Mahjong {
      * ツモ、立直、暗槓、加槓、九種九牌、(嶺上ツモ)、(ダブリー)
      * @param {String} socket_id     宣言をしたプレイヤーのsocket_id
      * @param {String} action_type   宣言の内容
-     * @next クライアントからのmsg待ち or performAnkan or performKakan or performRiichi or performTsumo
+     * @next クライアントからのmsg待ち or performAnkan or performKakan or declareRiichi or performTsumo
      */
     turnPlayerDeclareAction(socket_id, action_type){
         const p = this.#whoAction(socket_id);
@@ -575,6 +575,16 @@ class Mahjong {
         if (is_exist_ron){
             this.performRon(selected, p2, discard);
             return;
+        }
+
+        // 立直牌を鳴いた場合は、このタイミングで立直宣言が通ったとみなす
+        if (this.next_process_info["opt"]["is_riichi_turn"]) {
+            // 立直棒を供託に出す
+            let is_4riichi = this.performRiichi(this.cplayer_idx);
+            if (is_4riichi) {
+                setTimeout(this.drawnGame.bind(this), 10, "4riichi");  // 流局
+                return;
+            };
         }
 
         // ポン、カン、チーのいずれか
@@ -855,25 +865,48 @@ class Mahjong {
     }  
 
 
-    performRiichi(socket_id, discard_tile){
+    /**
+     * socket_idの人がdiscard_tileを切って立直を宣言する（1000点出すのはperformRiichiで行う）
+     * @param {String} socket_id 
+     * @param {Number} discard_tile 
+     * @returns 
+     */
+    declareRiichi(socket_id, discard_tile){
         // 正しい人が正しい牌を切ったかを判定
         let p = this.#whoAction(socket_id);  
         let player = this.players[p];
         if (!(player.enable_actions.riichi) || p != this.cplayer_idx){
-            console.log("[ERROR, performRiichi, A] illegal action");
+            console.log("[ERROR, declareRiichi, A] illegal action");
             return;
         }
         var ret = utils.canRiichi(player.getHands(), player.getMelds());
         if (discard_tile === null) discard_tile = ret[0];  // FIXME
         if (!ret.includes(discard_tile)){
-            console.log("[ERROR, performRiichi, B] 捨てられない牌を捨てた");
+            console.log("[ERROR, declareRiichi, B] 捨てられない牌を捨てた");
             return;
         }
 
         // 立直宣言
-        player.performRiichi(discard_tile);
-        // this.double_riichi_chance
+        player.declareRiichi(discard_tile);
         this.discardTile(socket_id, discard_tile, true);
+    }
+
+
+    /**
+     * player_idxの人の立直宣言が通ったので、1000点を供託に出す  
+     * @param {Number} player_idx  プレイヤーのidx（0～4）
+     * @returns {Boolean}          4人立直かどうか
+     */
+    performRiichi(player_idx){
+        this.players[player_idx].setDiffPoint(-1000);
+        this.sendPointMsgToAll();
+        this.riichi_bar_count += 1;
+        // 4人立直流局チェック
+        let riichis = [...Array(4)].map((_,i) => this.players[i].getIsRiichi());
+        if (riichis.every(v=>v)){  // 全員が立直している
+            return true;
+        }
+        return false;
     }
 
 
@@ -891,16 +924,22 @@ class Mahjong {
         }
         // 点数を取得する
         let hule = player.getHuleInfo();
-        console.log(hule);
         let hands = player.getHands();
         let tsumo = hands[hands.length - 1];
-        hands = hands.slice(0, hands.length - 1);
-        let diff_scores = hule.fenpei;
+        hands = hands.slice(0, hands.length - 1); 
+
+        // 点数移動（hule.fenpeiがその局の親から見た並びになっているのでプレイヤー番号視点に変換する）
+        let diff_scores = (hule.fenpei).map((_,j) => hule.fenpei[(j - this.parent_idx + 4) % 4]);
+        // 点数を実際に更新する
+        for (var j = 0; j < 4; j++) this.players[j].setDiffPoint(diff_scores[j]);
+        this.riichi_bar_count = 0;  // 供託の立直棒を0にする
 
         // 全員がOKボタンを押した時に次のゲームがスタートするようにする
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":[p], "special":false}};
-        this.sendOneGameEndMsgToAll([{"type": "tsumo", "winp":p, "hule":hule, "hands":hands, "tsumo":tsumo, "diff_score":diff_scores}]);
+        // あがり情報と点数情報をそれぞれ送る
+        this.sendOneGameEndMsgToAll([{"type": "tsumo", "winp":p, "hule":hule, "hands":hands, "tsumo":tsumo}]);
+        this.sendPointMsgToAll();
     }
 
 
@@ -916,18 +955,29 @@ class Mahjong {
 
         for (var i = 0; i < ron_players.length; i++){
             const player = this.players[ron_players[i].player];
+
+            // あがり情報をまとめる
             let hule = player.getHuleInfo();
-            console.log(hule);
             let hands = player.getHands();
-            let discard = roned_tile;
-            let diff_scores = hule.fenpei;
-            send_msg.push({"type": "ron", "winp":ron_players[i], "hule":hule, "hands":hands, "discard":discard, "diff_score":diff_scores});
+            let discard = roned_tile;            
+
+            // 点数移動（hule.fenpeiがその局の親から見た並びになっているのでプレイヤー番号視点に変換する）
+            let diff_scores = (hule.fenpei).map((_,j) => hule.fenpei[(j - this.parent_idx + 4) % 4]);
+            // ダブロン時、立直棒（this.riichi_bar_count）はi=0の人が全て持っていく
+            if (i >= 1) diff_scores[ron_players[i].player] -= this.riichi_bar_count * 1000;
+            // 点数を実際に更新する
+            for (var j = 0; j < 4; j++) this.players[j].setDiffPoint(diff_scores[j]);
+            
+            send_msg.push({"type": "ron", "winp":ron_players[i].player, "hule":hule, "hands":hands, "discard":discard});
         }
+        this.riichi_bar_count = 0;  // 供託の立直棒を0にする
 
         // 全員がOKボタンを押した時に次のゲームがスタートするようにする
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":ron_players, "special":false}};
+        // あがり情報と点数情報をそれぞれ送る
         this.sendOneGameEndMsgToAll(send_msg, "ron");
+        this.sendPointMsgToAll();
     }
 
 
@@ -939,20 +989,21 @@ class Mahjong {
     drawnGame(is_special = null){
         let send_msg = [];
 
-        if (is_special != null){
-            // 点棒やりとり fixme
-            let diff_scores = [0, 0, 0, 0];
-            send_msg.push({"type": is_special, "diff_score":diff_scores});
+        if (is_special != null){  // 4人立直、4槓子、9種9牌など
+            send_msg.push({"type": is_special});
         }
         else {
             // 流し満貫チェック
             for (var i = 0; i < 4; i++) {
                 if (this.players[i].getDrawnMangan()){
-                    // 点棒やりとり fixme
                     let diff_scores;
                     if (i == this.cplayer_idx) diff_scores = [...Array(4)].map((_,j) => (i == j)? 12000:-4000);
                     else diff_scores = [...Array(4)].map((_,j) => (i == j)? 8000:((j == this.cplayer_idx)?-4000:-2000));
-                    send_msg.push({"type": "drawn-mangan", "winp":i, "diff_score":diff_scores});
+
+                    // 点数を更新する
+                    for (var i = 0; i < 4; i++) this.players[i].setDiffPoint(diff_scores[i]);
+
+                    send_msg.push({"type": "drawn-mangan", "winp":i, "defen":diff_scores[i]});
                 }
             }
             
@@ -964,19 +1015,24 @@ class Mahjong {
             let minus_score = [0, -1000, -1500, -3000, 0][tenpai_player_num];
             // スコアの変動
             let diff_scores = [...Array(4)].map((_,i) => this.players[i].getTenpai()? plus_score: minus_score);
+
+            // 点数を更新する
+            for (var i = 0; i < 4; i++) this.players[i].setDiffPoint(diff_scores[i]);
+
             let tenpais = [];
             for (var i = 0; i < 4; i++){
                 if (this.players[i].getTenpai()){
                     tenpais.push({"player":i, "hands":this.players[i].getHands()});
                 }
             }
-            send_msg.push({"type": "drawn", "diff_score":diff_scores, "tenpais":tenpais});
+            send_msg.push({"type": "drawn", "tenpais":tenpais});
         }
         // 全員がOKボタンを押した時に次のゲームがスタートするようにする
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":[], "special":is_special != null}};
-        console.log(send_msg);
+        // あがり情報と点数情報をそれぞれ送る
         this.sendOneGameEndMsgToAll(send_msg, "drawn");
+        this.sendPointMsgToAll();
     }
 
 
@@ -1001,7 +1057,7 @@ class Mahjong {
             },
             jicun: {
                 changbang:  this.honba_count,      // 積み棒の本数
-                lizhibang:  0                      // 立直棒の本数   // FIXME
+                lizhibang:  this.riichi_bar_count  // 立直棒の本数
             },
             kan_num:        this.kans.length,      // 場のカンの数
             tile_num:       this.tiles.length,     // 山牌の数
@@ -1187,8 +1243,8 @@ class Mahjong {
         for (var i = 0; i < 4; i++) {
             let res = [];
             for (var j = 0; j < results.length; j++) {
-                let tmp = JSON.parse(JSON.stringify(results[j]));
-                tmp.diff_score = (tmp.diff_score.concat(tmp.diff_score)).slice(i, i + 4);
+                // プレイヤーi視点の並びに変える
+                let tmp = JSON.parse(JSON.stringify(results[j]));  // Objectコピー
                 if (["tsumo", "ron", "drawn-mangan"].includes(tmp.type)) tmp.winp = (tmp.winp - i + 4) % 4;
                 else if (tmp.type == "drawn") {
                     for (var k = 0; k < tmp.tenpais.length; k++) {
@@ -1200,6 +1256,17 @@ class Mahjong {
             this.players[i].sendMsg('one-game-end', res);
         }
     }
+
+
+    /**
+     * 現在の点数を全員に通知する
+     */
+    sendPointMsgToAll(){
+        for (var i = 0; i < 4; i++) {
+            let points = [...Array(4)].map((_,j) => this.players[(j + i) % 4].getPoint());  // iから見た点数
+            this.players[i].sendMsg('point', points);
+        }
+    }    
 }
 
 module.exports = Mahjong;

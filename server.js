@@ -101,8 +101,7 @@ io.on('connection', (socket) => {
 
     // プレイヤーが立直を宣言したときの処理
     socket.on('declare-riichi', (discardTile) => {
-        console.log("[declare-riichi]");
-        game.performRiichi(socket.id, discardTile);
+        game.declareRiichi(socket.id, discardTile);
     });
     
     // プレイヤーがツモあがりを宣言したときの処理

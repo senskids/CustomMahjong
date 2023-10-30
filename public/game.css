@@ -55,6 +55,7 @@
     font-size: medium;
     padding-bottom: 0.3rem;
     margin-bottom: 0.5rem;
+    box-shadow: 0 10px 25px 0 rgba(0, 0, 0, .5);
   }
   .player-info{
     opacity: 100%;

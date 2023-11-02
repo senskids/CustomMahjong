@@ -16,6 +16,8 @@ const idx2player_map = ['my', 'right', 'opposite', 'left'];
 // ゲーム画面の要素を取得
 const gameEl = document.querySelector('#field');
 const gameStartBtn = document.querySelector('#game-start-btn');
+const musicBtn = document.querySelector('#music-btn');
+const music = new Audio('./music/bgm.mp3'); // BGM
 const actions = ['chi', 'pon', 'kan', 'ron', 'riichi', 'tsumo', 'drawn', 'skip'];
 const action_JPs = {'chi': "チー", 'pon': "ポン", 'kan': "カン", 'ron': "ロン", 'riichi': "リーチ", 'tsumo': "ツモ", 'drawn': "九種九牌流局", 'skip': "スキップ"};
 const actionBtns = {};
@@ -432,7 +434,19 @@ socket.on('game-status', (data) => {
 // ゲームスタートボタンが押された時の処理
 gameStartBtn.addEventListener('click', (event) => {
     socket.emit('start-game');
+    music.play();
+    music.loop = true;
 });
+
+musicBtn.addEventListener('click', (event)=>{
+    if(music.muted == false){
+        music.pause();
+        music.muted = true;
+    }else{
+        music.play();
+        music.muted = false;
+    }
+})
 
 
 

@@ -196,8 +196,6 @@
   }
   
 
-
-
   #game-info-area {
     position: absolute;
     top: 34%;
@@ -284,13 +282,21 @@
       inset 2px 2px 3px rgba(0, 0, 0, 0.6);
   }
 
-  #reload{
+  #setting{
     position: absolute;
     top: 3%;
     left: 95%;
+  }
+  #reload{
     background-color: rgb(219, 219, 219);
     border-radius: 15%;
     padding: 5px;
+  }
+  #music{
+    background-color: rgb(219, 219, 219);
+    border-radius: 15%;
+    padding: 3px;
+    margin-top: 5%;
   }
   #point{
     text-align: center;

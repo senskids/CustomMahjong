@@ -126,34 +126,61 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
 }
 renderMeldTiles = function(el, tiles, img_width){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
-    let rotateFlag = false;
-    tiles.forEach((arr, _) => {
-        let p2 = arr.from_who;// 各組合せの鳴かれた人
-        arr.melds.forEach((tile, idx) => {
+    let X = 0;  // 描画する牌の左端の補正座標(px)
+    const W1 = parseInt(img_width);  // '60px' => 60
+    const W2 = parseInt(W1 / 2);
+    const W3 = parseInt(W1 / 3);
+    const W4 = parseInt(W1 / 4);
+    const W10 = parseInt(W1 / 10);
+    const W30 = parseInt(W1 / 30);
+    const SP = 3;  // 決め打ちの値 fixme
+    const ROT1 = W4 - W30;
+    const ROT2 = ROT1 + W2;
+
+    tiles.forEach((meld, _) => {
+        let renderTiles = [];
+        let renderOpts = [];
+        // 描画する情報を格納する
+        switch(meld.type) {
+            case 'ankan':
+                renderTiles = [meld.hands[0], 136, 136, meld.hands[3]];  // 136: 裏側
+                renderOpts = [0, 0, 0, 0];
+                break;
+            case 'kakan':
+                renderTiles = meld.hands.slice(0, 2);
+                renderOpts = renderTiles.map(v => 0);
+                var rotIdx = [null, 2, 1, 0][meld.from_who];
+                renderTiles.splice(rotIdx, 0, meld.discard, meld.hands[2]);  // rotIdxの場所にdiscard, hands[2]を挿入
+                renderOpts.splice(rotIdx, 0, 1, 2);  // rotIdxの場所に1, 2を挿入
+                break;
+            default:  // pon, chi, kan
+                renderTiles = [...meld.hands];
+                renderOpts = renderTiles.map(v => 0);
+                var rotIdx = [null, meld.hands.length, 1, 0][meld.from_who];
+                renderTiles.splice(rotIdx, 0, meld.discard);  // rotIdxの場所にdiscardを挿入
+                renderOpts.splice(rotIdx, 0, 1);  // rotIdxの場所に1を挿入
+                break;
+        }
+        // 牌を描画する（Xの変化度合は、経験的に決定）
+        for (let i = 0; i < renderTiles.length; i++) {
             const tileEl = document.createElement('img');
-            tileEl.classList.add('hand-tile');
-            tileEl.src = key2fname_map[tile];
-            tileEl.style = "width: " + img_width + ";";
-            // 鳴かれた人側の牌だけ90度傾ける
-            if(arr.melds.length === 4){ // かん
-                if(p2 === 1 && idx === 3){
-                    rotateFlag = true;
-                }else if(p2 === 2 && idx === 1){
-                    rotateFlag = true;
-                }else if(p2 === 3 && idx === 0){
-                    rotateFlag = true;
-                }
-            }else if(arr.melds.length === 3){ // ぽん
-                if((3-p2) == idx){
-                    rotateFlag = true;
-                }
+            tileEl.src = key2fname_map[renderTiles[i]];
+            if (renderOpts[i] == 0) {      // 通常の手出し牌
+                tileEl.style = `width: ${img_width}px; transform: translate(${X}px);`;
+                X -= W10;
             }
-            if(rotateFlag){
-                tileEl.style = "transform:rotate(90deg);";
-                rotateFlag = false;
+            else if (renderOpts[i] == 1){  // 鳴き牌
+                X += W4;
+                tileEl.style = `width: ${img_width}px; transform: rotate(90deg) translate(${ROT1}px, ${-X}px);`;
+                X -= SP;
+            }
+            else {  // 加槓牌
+                X -= (W1 - SP);
+                tileEl.style = `width: ${img_width}px; transform: rotate(90deg) translate(${-ROT2}px, ${-X}px);`;
             }
             el.appendChild(tileEl);
-        });
+        }
+        X += W3;
     });
 }
 renderDoraTiles = function(el, tiles, img_width){
@@ -253,7 +280,7 @@ socket.on('diff-data', (data) => {
                     handTiles[p1].splice(rand, 1);
                 }
         });
-        meldTiles[p1].push({'from_who': p2, 'discard': meld_info.discard, 'melds': meld_info.hands.concat(meld_info.discard)});
+        meldTiles[p1].push({'type': data.action, 'from_who': p2, 'discard': meld_info.discard, 'hands': meld_info.hands});
     }
     else if(data.action == 'ankan' || data.action == 'kakan'){
         console.log(data);
@@ -271,12 +298,14 @@ socket.on('diff-data', (data) => {
                 }
         });
         if (data.action == 'ankan') {
-            meldTiles[p].push({'from_who': null, 'discard': null, 'melds': meld_info.hands});
+            meldTiles[p].push({'type': 'ankan', 'from_who': null, 'discard': null, 'hands': meld_info.hands});
         }
-        else if (data.action == 'kakan'){ // FIXME 既にあるmeldsから探してそこに追加する
+        else if (data.action == 'kakan'){ // FIXME 既にあるhandsから探してそこに追加する
             for(var t = 0; t < meldTiles[p].length; t++){
-                if (parseInt(meld_info.hands[0] / 4) == parseInt(meldTiles[p][t].discard / 4))
-                    meldTiles[p][t].melds.push(meld_info.hands[0]);
+                if (parseInt(meld_info.hands[0] / 4) == parseInt(meldTiles[p][t].discard / 4)) {
+                    meldTiles[p][t].hands.push(meld_info.hands[0]);
+                    meldTiles[p][t].type = 'kakan';
+                }
             }
         }
     }

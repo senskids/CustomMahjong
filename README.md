@@ -2,12 +2,13 @@
 色々なルールの麻雀が遊べるWebアプリ
 
 ## Library & Service
-- node js
-- express
-- socket.io
-- @kobalab/majiang-core
-- いらすとや
-- Render
+- <a href="https://nodejs.org/en">node js</a>
+- <a href="https://expressjs.com/ja/">express</a>
+- <a href="https://socket.io/">socket.io</a>
+- <a href="https://github.com/kobalab/majiang-core">@kobalab/majiang-core</a>
+- <a href="https://www.irasutoya.com/">いらすとや</a>
+- <a href="https://render.com/">Render</a>
+- <a href="https://dova-s.jp/bgm/play18674.html">DOVA-SYNDROME</a>
 
 ## For test play
 1. git clone XXXXX

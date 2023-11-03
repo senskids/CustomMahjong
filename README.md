@@ -9,6 +9,7 @@
 - <a href="https://www.irasutoya.com/">いらすとや</a>
 - <a href="https://render.com/">Render</a>
 - <a href="https://dova-s.jp/bgm/play18674.html">DOVA-SYNDROME</a>
+- <a href="https://icooon-mono.com/00127-%E9%9F%B3%E9%87%8F%E3%81%AE%E3%82%A2%E3%82%A4%E3%82%B3%E3%83%B3%E7%B4%A0%E6%9D%90/">icooon-mono</a>
 
 ## For test play
 1. git clone XXXXX

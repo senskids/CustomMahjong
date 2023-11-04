@@ -26,7 +26,6 @@ actions.forEach(action => {
     document.getElementById(`${action}-btn`).addEventListener('click', (event) => {
         console.log(action);
         if(action === "riichi"){
-            is_riichi = true;
             //すべてのイベントリスナーを除去
             renderTiles(handEls[0], handTiles[0], "100px", false, true, is_Draw);
         }
@@ -59,9 +58,6 @@ let is_Draw = false;
 // 牌を描画するかどうかを判定するフラグ
 let is_Render = false;
 
-// 立直下かどうかをはんていするフラグ
-let is_riichi = false;
-
 // Socket.IOのインスタンスを作成
 const socket = io();
 
@@ -85,15 +81,10 @@ let discardTiles = [[], [], [], []];
 let meldTiles = [[], [], [], []];
 let doraTiles = [];
 let riichiTurns = [null, null, null, null];  // 立直の際の捨て牌の位置
-let riichiTile= [null,null,null,null];// 立直の際の捨て牌の位置
 
 renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false, playerNum){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     
-    // 各プレイヤーの立直の際の捨て牌の位置記録
-    if(is_riichi && is_current == false){
-        riichiTile[playerNum] = tiles.length-1;
-    }
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
         tileEl.classList.add('hand-tile');
@@ -101,9 +92,8 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
         tileEl.alt = tile;
         tileEl.style = `width: ${img_width};`;
         // 立直の牌の場合90度傾ける
-        if(idx == riichiTile[playerNum] && is_current == false){
+        if(idx == riichiTurns[playerNum]) {
             tileEl.style = "transform:rotate(90deg);";
-            is_riichi = false;
         }
         if (is_listener){
             tileEl.addEventListener('click', () => {
@@ -197,14 +187,13 @@ renderDoraTiles = function(el, tiles, img_width){
 
 // WebSocketでサーバからのデータを受信する処理
 socket.on('data', (data) => {
-    is_riichi = false;
-    riichiTile = [null, null, null, null];
     // ゲームの状態を更新する
     update_actions(data.enable_actions);
 
     var hands = [data.myHandTiles, data.rightHandTiles, data.oppositeHandTiles, data.leftHandTiles];
     var discards = [data.myDiscardTiles, data.rightDiscardTiles, data.oppositeDiscardTiles, data.leftDiscardTiles];
     var melds = [data.myMeldTiles, data.rightMeldTiles, data.oppositeMeldTiles, data.leftMeldTiles];
+    var riichis = [data.myRiichiTurn, data.rightRiichiTurn, data.oppositeRiichiTurn, data.leftRiichiTurn];
     for(var i = 0; i < 4; i++){
         if (hands[i].code == 'full')
             handTiles[i] = hands[i].value;
@@ -212,6 +201,7 @@ socket.on('data', (data) => {
             discardTiles[i] = discards[i].value;
         if (melds[i].code == 'full')
             meldTiles[i] = melds[i].value;
+        riichiTurns[i] = riichis[i];
     }
 
     // ドラ

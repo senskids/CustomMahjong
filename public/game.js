@@ -27,7 +27,7 @@ actions.forEach(action => {
         console.log(action);
         if(action === "riichi"){
             //すべてのイベントリスナーを除去
-            renderHandTiles(handEls[0], handTiles[0], "100px", false, true, is_Draw);
+            renderHandTiles(handEls[0], handTiles[0], handTileSizes[0], true, null, false);
         }
         socket.emit('declare-action', action);
     });    
@@ -52,11 +52,9 @@ const resultView = {
     "yaku":document.getElementById('result-yaku-area'),
     "score":document.getElementById('result-score-area'),
 }
-
-// 牌を引いたかを判定するフラグ
-let is_Draw = false;
-// 牌を描画するかどうかを判定するフラグ
-let is_Render = false;
+const handTileSizes = [100, 30, 30, 30];
+const discardTileSizes = [60, 60, 60, 60];
+const meldTileSizes = [60, 60, 60, 60];
 
 // Socket.IOのインスタンスを作成
 const socket = io();
@@ -80,71 +78,87 @@ let handTiles = [[], [], [], []];
 let discardTiles = [[], [], [], []];
 let meldTiles = [[], [], [], []];
 let doraTiles = [];
-let riichiTurns = [null, null, null, null];  // 立直の際の捨て牌の位置
+let riichiTurns = [null, null, null, null];   // 立直の際の捨て牌の位置
+let lastCommands = [null, null, null, null];  // 各プレイヤーの直前のコマンド
 
-renderHandTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false){
+/**
+ * 手牌エリアを描画する関数
+ * @param {Element} el                描画するhtmlエレメント
+ * @param {Array} tiles               描画する手牌（タイルID表現）
+ * @param {Number} imgWidth           手牌の描画サイズ（imgWidth[px]）
+ * @param {Boolean} isDrawSpace       ツモ表現（最後の牌の前に少し空間を設ける）を適用するか否か
+ * @param {Number} spaceIdx           spaceIdx番目の前に1牌分スペースを開ける。開けない場合null（間隔を開けた後0.3秒後にrenderしなおす）
+ * @param {Boolean} isClickListener   手牌クリック時にdiscard-tileイベントを送信するか
+ */
+function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickListener){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
-    
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
-        tileEl.classList.add('hand-tile');
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
-        tileEl.style = `width: ${img_width};`;
-        if (is_listener){
+        let style = `width: ${imgWidth}px;`;
+        // 下記2個のifが両方同時にtrueになることはない（ツモ切りのspaceIdxはtile.length）
+        // ツモ牌の場合、手牌と少し空間をあける
+        if (isDrawSpace && (idx == tiles.length - 1)) {
+            style += style + ` margin-left: ${parseInt(imgWidth/2)}px;`;
+        }
+        // 牌を切った場合、切った牌の場所に空間をあける。0.3秒後に手牌をソートして再レンダリングする
+        if (idx === spaceIdx) {
+            style += style + ` margin-left: ${imgWidth}px;`;
+            window.setTimeout(()=>{ 
+                tiles.sort((a, b) => a - b);
+                renderHandTiles(el, tiles, imgWidth, false, null, false);
+            }, 300);
+        }
+        tileEl.style = style;
+        el.appendChild(tileEl);
+        // 手牌クリック時にdiscard-tileイベントを発生させる
+        if (isClickListener){
             tileEl.addEventListener('click', () => {
                 socket.emit('discard-tile', tile);
             })
         }
-
-        // 最後の牌には新たなクラスを付与する。自分の牌と他の人の牌でスペースの空き方を変える
-        if ((idx == tiles.length - 1) && is_current && is_draw) {
-            if(is_listener){
-                tileEl.classList.add('last-my-tile');
-            }
-            else {
-                tileEl.classList.add('last-other-tile');
-            }
-        }
-        el.appendChild(tileEl);
     });
 }
 /**
  * 捨牌エリアを描画する関数
- * @param {Number} playerIdx  描画するプレイヤーのIndex
- * @param {String} imgWidth   描画サイズ（'XXpx'）
+ * @param {Element} el            描画するhtmlエレメント
+ * @param {Array} tiles           描画する捨牌（タイルID表現）
+ * @param {Number} imgWidth       捨牌の描画サイズ（imgWidth[px]）
+ * @param {Number} riichiTurnIdx  立直宣言牌のindex。立直宣言していない場合null
  */
-function renderDiscardTiles(playerIdx, imgWidth) {
-    const el = discardEls[playerIdx];
-    const tiles = discardTiles[playerIdx];
-    const RiichiTurnIdx = riichiTurns[playerIdx];
-    const W = parseInt(imgWidth);
-    // 全要素を一旦削除
+function renderDiscardTiles(el, tiles, imgWidth, riichiTurnIdx = null) {
     while(el.firstChild) el.removeChild(el.firstChild);  
     // 描画
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
-        if (idx != RiichiTurnIdx){
-            tileEl.style = `width: ${W}px; transform: translate(0)`;
+        if (idx != riichiTurnIdx){
+            tileEl.style = `width: ${imgWidth}px; transform: translate(0)`;
             el.appendChild(tileEl);
         }
         else {
-            const H = parseInt(W * (tileEl.height / tileEl.width));
-            const L = parseInt((H - W) / 2);
+            const H = parseInt(imgWidth * (tileEl.height / tileEl.width));
+            const L = parseInt((H - imgWidth) / 2);
             const divEl = document.createElement('div');
             divEl.style = `display: inline-block; width: ${H - L}px; `;
-            tileEl.style = `width: ${W}px; margin-left: ${L}px; transform:rotate(90deg);`;
+            tileEl.style = `width: ${imgWidth}px; margin-left: ${L}px; transform:rotate(90deg);`;
             divEl.append(tileEl);
             el.appendChild(divEl);
         }
     });
 }
-renderMeldTiles = function(el, tiles, img_width){
+/**
+ * 鳴き牌エリアを描画する関数
+ * @param {Element} el            描画するhtmlエレメント
+ * @param {Array} tiles           描画する公開面子（meld表現）
+ * @param {Number} imgWidth       牌の描画サイズ（imgWidth[px]）
+ */
+function renderMeldTiles(el, tiles, imgWidth){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     let X = 0;  // 描画する牌の左端の補正座標(px)
-    const W1 = parseInt(img_width);  // '60px' => 60
+    const W1 = imgWidth;  
     const W2 = parseInt(W1 / 2);
     const W3 = parseInt(W1 / 3);
     const W4 = parseInt(W1 / 4);
@@ -183,17 +197,17 @@ renderMeldTiles = function(el, tiles, img_width){
             const tileEl = document.createElement('img');
             tileEl.src = key2fname_map[renderTiles[i]];
             if (renderOpts[i] == 0) {      // 通常の手出し牌
-                tileEl.style = `width: ${img_width}px; transform: translate(${X}px);`;
+                tileEl.style = `width: ${W1}px; transform: translate(${X}px);`;
                 X -= W10;
             }
             else if (renderOpts[i] == 1){  // 鳴き牌
                 X += W4;
-                tileEl.style = `width: ${img_width}px; transform: rotate(90deg) translate(${ROT1}px, ${-X}px);`;
+                tileEl.style = `width: ${W1}px; transform: rotate(90deg) translate(${ROT1}px, ${-X}px);`;
                 X -= SP;
             }
             else {  // 加槓牌
                 X -= (W1 - SP);
-                tileEl.style = `width: ${img_width}px; transform: rotate(90deg) translate(${-ROT2}px, ${-X}px);`;
+                tileEl.style = `width: ${W1}px; transform: rotate(90deg) translate(${-ROT2}px, ${-X}px);`;
             }
             el.appendChild(tileEl);
         }
@@ -237,9 +251,9 @@ socket.on('data', (data) => {
 
     // 牌を描画する
     for(var i = 0; i < 4; i++){
-        renderHandTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false);
-        renderDiscardTiles(i, "60px");
-        renderMeldTiles(meldEls[i], meldTiles[i], "60px");
+        renderHandTiles(handEls[i], handTiles[i], handTileSizes[i], false, null, i == 0);
+        renderDiscardTiles(discardEls[i], discardTiles[i], discardTileSizes[i], riichiTurns[i]);
+        renderMeldTiles(meldEls[i], meldTiles[i], meldTileSizes[i]);
     }
     renderDoraTiles(doraEl, doraTiles, "60px");
 });
@@ -250,36 +264,49 @@ socket.on('diff-data', (data) => {
     // ゲームの状態を更新する
     if ("enable_actions" in data)
         update_actions(data.enable_actions);
-    // ドラ表示を除いて牌を描画する
-    is_Render = true;
-    if (data.action == 'draw'){
-        handTiles[data.player].push(data.tile);
-        currentTilesNum = data.remain_tile_num;
-        is_Draw = true;
+
+    // ドラ更新
+    if (data.action == 'dora'){
+        doraTiles.push(data.tile);
+        renderDoraTiles(doraEl, doraTiles, "60px");
+        return;
     }
+    // ツモ
+    else if (['draw', 'replacement-draw'].includes(data.action)){
+        const p = data.player;
+        handTiles[p].push(data.tile);
+        tileNum.textContent = data.remain_tile_num;  // 残り牌数を更新する
+        lastCommands[p] = 'draw';
+        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], true, null, p == 0);
+        return;
+    }
+    // 捨て牌
     else if(data.action == 'discard'){
-        if (handTiles[data.player].indexOf(data.tile) != -1){
-            handTiles[data.player] = handTiles[data.player].filter(item => item != data.tile)
-            handTiles[data.player].sort((a, b) => a - b);
+        const p = data.player;
+        let discardIdx = handTiles[p].indexOf(data.tile);
+        if (discardIdx != -1) {
+            handTiles[p] = handTiles[p].filter(item => item != data.tile)
         }
-        else if (data.player != 0){
-            let discardIdx = -1;
-            if(data.is_tsumo_giri){
-                discardIdx = handTiles[data.player].length - 1;
-                console.log("tumogiri:", data.is_tsumo_giri);
+        else if (p != 0){
+            if(data.is_tsumo_giri) {
+                discardIdx = handTiles[p].length - 1;
             }
             else {
-                discardIdx = Math.floor(Math.random() * (handTiles[data.player].length - 1));
+                discardIdx = Math.floor(Math.random() * (handTiles[p].length - 1));
             }
-            handTiles[data.player].splice(discardIdx, 1);
+            handTiles[p].splice(discardIdx, 1);
         }
         else 
             console.log("[ERROR C]");
-        discardTiles[data.player].push(data.tile);
-        is_Draw = false;
+        discardTiles[p].push(data.tile);
+        const isDraw = (lastCommands[p] == 'draw') && !data.is_tsumo_giri;
+        lastCommands[p] = 'discard';
+        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], isDraw, discardIdx, p == 0);
+        renderDiscardTiles(discardEls[p], discardTiles[p], discardTileSizes[p], riichiTurns[p]);
+        return;
     }
+    // 他家から鳴き
     else if(data.action == 'pon' || data.action == 'chi' || data.action == 'kan'){
-        console.log(data);
         // var meld_info = {from_who: person, dicard: tile, hands: []};
         var meld_info = data.meld;
         var p1 = data.player;  // 鳴いた人
@@ -298,7 +325,13 @@ socket.on('diff-data', (data) => {
                 }
         });
         meldTiles[p1].push({'type': data.action, 'from_who': p2, 'discard': meld_info.discard, 'hands': meld_info.hands});
+        lastCommands[p1] = 'meld';
+        renderHandTiles(handEls[p1], handTiles[p1], handTileSizes[p1], false, null, p1 == 0);
+        renderMeldTiles(meldEls[p1], meldTiles[p1], meldTileSizes[p1]);
+        renderDiscardTiles(discardEls[p2], discardTiles[p2], discardTileSizes[p2], riichiTurns[p2]);
+        return;
     }
+    // 自分からカン
     else if(data.action == 'ankan' || data.action == 'kakan'){
         console.log(data);
         var p = data.player;  // 鳴いた人
@@ -317,38 +350,19 @@ socket.on('diff-data', (data) => {
         if (data.action == 'ankan') {
             meldTiles[p].push({'type': 'ankan', 'from_who': null, 'discard': null, 'hands': meld_info.hands});
         }
-        else if (data.action == 'kakan'){ // FIXME 既にあるhandsから探してそこに追加する
+        else if (data.action == 'kakan'){ 
             for(var t = 0; t < meldTiles[p].length; t++){
                 if (parseInt(meld_info.hands[0] / 4) == parseInt(meldTiles[p][t].discard / 4)) {
                     meldTiles[p][t].hands.push(meld_info.hands[0]);
                     meldTiles[p][t].type = 'kakan';
                 }
             }
-        }
+        }        
+        lastCommands[p] = 'mykan';
+        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], false, null, p == 0);
+        renderMeldTiles(meldEls[p], meldTiles[p], meldTileSizes[p]);
+        return;
     }
-    else if (data.action == 'replacement-draw'){
-        let p = data.player;
-        currentTilesNum = data.remain_tile_num;
-        handTiles[p].push(data.tile);
-        is_Draw = true;
-    }
-    else if (data.action == 'dora'){
-        doraTiles.push(data.tile);
-        renderDoraTiles(doraEl, doraTiles, "60px");
-        is_Render = false;
-    }
-
-    if (is_Render){
-        // 牌を描画する
-        for(var i = 0; i < 4; i++){
-            renderHandTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false, (i == data.player)? true: false, is_Draw);
-            renderDiscardTiles(i, "60px");
-            renderMeldTiles(meldEls[i], meldTiles[i], "60px");
-        }
-    }
-
-    // 残り牌数を更新する
-    tileNum.textContent = currentTilesNum;
 });
 
 
@@ -421,8 +435,8 @@ socket.on('one-game-end', (results) => {
 
             if (["ron", "tsumo"].includes(result.type)){
                 result.hands.push((result.type == "tsumo")? result.tsumo: result.discard);
-                renderHandTiles(resultView["hands"], result.hands, "60px", false);
-                renderMeldTiles(resultView["melds"], meldTiles[result.winp], "60px");  // fixme
+                renderHandTiles(resultView["hands"], result.hands, 60, true, null, false);
+                renderMeldTiles(resultView["melds"], meldTiles[result.winp], "60px");
                 resultView["yaku"].innerHTML = "";
                 for (var j = 0; j < result.hule.hupai.length; j++) resultView["yaku"].innerHTML += `<p>${result.hule.hupai[j].name}</p>`;
                 resultView["score"].innerHTML = result.hule.defen;
@@ -435,7 +449,7 @@ socket.on('one-game-end', (results) => {
                     let player = result.tenpais[j].player;
                     let hands = result.tenpais[j].hands;
                     if (player != 0) 
-                        renderHandTiles(handEls[player], hands, "30px", false, false, false);
+                        renderHandTiles(handEls[player], hands, 30, false, null, false);
                 }        
             }
             else if ("drawn-mangan") {

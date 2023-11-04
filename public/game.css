@@ -310,18 +310,6 @@
     padding: 2rem 0rem 6rem 0rem;
   }
 
-  .last-my-tile{
-    margin-left: 50px;
-  }
-
-  .last-other-tile{
-    margin-left: 20px;
-  }
-
-  .meld-tiles{
-    margin-left: 100px;
-  }
-
 /* プレイヤーの宣言の表示関係 */
 .declare-window{
   position: absolute;

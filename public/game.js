@@ -27,7 +27,7 @@ actions.forEach(action => {
         console.log(action);
         if(action === "riichi"){
             //すべてのイベントリスナーを除去
-            renderTiles(handEls[0], handTiles[0], "100px", false, true, is_Draw);
+            renderHandTiles(handEls[0], handTiles[0], "100px", false, true, is_Draw);
         }
         socket.emit('declare-action', action);
     });    
@@ -82,7 +82,7 @@ let meldTiles = [[], [], [], []];
 let doraTiles = [];
 let riichiTurns = [null, null, null, null];  // 立直の際の捨て牌の位置
 
-renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false, playerNum){
+renderHandTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     
     tiles.forEach((tile, idx) => {
@@ -91,10 +91,6 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
         tileEl.style = `width: ${img_width};`;
-        // 立直の牌の場合90度傾ける
-        if(idx == riichiTurns[playerNum]) {
-            tileEl.style = "transform:rotate(90deg);";
-        }
         if (is_listener){
             tileEl.addEventListener('click', () => {
                 socket.emit('discard-tile', tile);
@@ -111,6 +107,38 @@ renderTiles = function(el, tiles, img_width, is_listener = false, is_current = f
             }
         }
         el.appendChild(tileEl);
+    });
+}
+/**
+ * 捨牌エリアを描画する関数
+ * @param {Number} playerIdx  描画するプレイヤーのIndex
+ * @param {String} imgWidth   描画サイズ（'XXpx'）
+ */
+function renderDiscardTiles(playerIdx, imgWidth) {
+    const el = discardEls[playerIdx];
+    const tiles = discardTiles[playerIdx];
+    const RiichiTurnIdx = riichiTurns[playerIdx];
+    const W = parseInt(imgWidth);
+    // 全要素を一旦削除
+    while(el.firstChild) el.removeChild(el.firstChild);  
+    // 描画
+    tiles.forEach((tile, idx) => {
+        const tileEl = document.createElement('img');
+        tileEl.src = key2fname_map[tile];
+        tileEl.alt = tile;
+        if (idx != RiichiTurnIdx){
+            tileEl.style = `width: ${W}px; transform: translate(0)`;
+            el.appendChild(tileEl);
+        }
+        else {
+            const H = parseInt(W * (tileEl.height / tileEl.width));
+            const L = parseInt((H - W) / 2);
+            const divEl = document.createElement('div');
+            divEl.style = `display: inline-block; width: ${H - L}px; `;
+            tileEl.style = `width: ${W}px; margin-left: ${L}px; transform:rotate(90deg);`;
+            divEl.append(tileEl);
+            el.appendChild(divEl);
+        }
     });
 }
 renderMeldTiles = function(el, tiles, img_width){
@@ -209,8 +237,8 @@ socket.on('data', (data) => {
 
     // 牌を描画する
     for(var i = 0; i < 4; i++){
-        renderTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false);
-        renderTiles(discardEls[i], discardTiles[i], "60px");
+        renderHandTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false);
+        renderDiscardTiles(i, "60px");
         renderMeldTiles(meldEls[i], meldTiles[i], "60px");
     }
     renderDoraTiles(doraEl, doraTiles, "60px");
@@ -313,8 +341,8 @@ socket.on('diff-data', (data) => {
     if (is_Render){
         // 牌を描画する
         for(var i = 0; i < 4; i++){
-            renderTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false, (i == data.player)? true: false, is_Draw);
-            renderTiles(discardEls[i], discardTiles[i], "60px",false,false,false,i);
+            renderHandTiles(handEls[i], handTiles[i], (i == 0)? "100px":"30px", (i == 0)? true: false, (i == data.player)? true: false, is_Draw);
+            renderDiscardTiles(i, "60px");
             renderMeldTiles(meldEls[i], meldTiles[i], "60px");
         }
     }
@@ -393,7 +421,7 @@ socket.on('one-game-end', (results) => {
 
             if (["ron", "tsumo"].includes(result.type)){
                 result.hands.push((result.type == "tsumo")? result.tsumo: result.discard);
-                renderTiles(resultView["hands"], result.hands, "60px", false);
+                renderHandTiles(resultView["hands"], result.hands, "60px", false);
                 renderMeldTiles(resultView["melds"], meldTiles[result.winp], "60px");  // fixme
                 resultView["yaku"].innerHTML = "";
                 for (var j = 0; j < result.hule.hupai.length; j++) resultView["yaku"].innerHTML += `<p>${result.hule.hupai[j].name}</p>`;
@@ -407,7 +435,7 @@ socket.on('one-game-end', (results) => {
                     let player = result.tenpais[j].player;
                     let hands = result.tenpais[j].hands;
                     if (player != 0) 
-                        renderTiles(handEls[player], hands, "30px", false, false, false);
+                        renderHandTiles(handEls[player], hands, "30px", false, false, false);
                 }        
             }
             else if ("drawn-mangan") {

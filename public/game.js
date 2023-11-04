@@ -84,8 +84,7 @@ let handTiles = [[], [], [], []];
 let discardTiles = [[], [], [], []];
 let meldTiles = [[], [], [], []];
 let doraTiles = [];
-// let wallTiles = [];
-
+let riichiTurns = [null, null, null, null];  // 立直の際の捨て牌の位置
 let riichiTile= [null,null,null,null];// 立直の際の捨て牌の位置
 
 renderTiles = function(el, tiles, img_width, is_listener = false, is_current = false, is_draw = false, playerNum){
@@ -339,6 +338,8 @@ socket.on('diff-data', (data) => {
 socket.on('declare', (data) => {
     let p = data.player;         // 宣言した人
     let action = data.action;    // 宣言の種類
+    // 立直の場合、riichiTurnsに曲げ牌の位置を記録する
+    if (action == 'riichi') riichiTurns[p] = discardTiles[p].length;
     declareEls[p].innerHTML = action_JPs[action];
     declareEls[p].style.display = "block";
     window.setTimeout(()=>{ declareEls[p].style.display = "none"; }, 1000);

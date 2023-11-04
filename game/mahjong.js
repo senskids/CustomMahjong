@@ -74,7 +74,7 @@ class Mahjong {
 
     ///// クライアントを管理するメソッド /////
 
-    /** FIXME #14 : ゲームが開始している時は牌も表示するようにする
+    /** 
      * プレイヤーログイン時にプレイヤーを追加する
      * @param {String} user_name  ユーザ名
      * @param {String} socket_id  現在のソケット通信のID
@@ -82,14 +82,21 @@ class Mahjong {
      * @returns {Boolean}         プレイヤーがゲームに入れたか否か
      */
     addPlayer(user_name, socket_id, user_id) {
-        let player_id = -1;
+        // プレイヤー発見時のcallback
+        const callbackFunc = (player_id) => {
+            if (this.state == this.GAME_STATE.PLAYING){
+                this.sendGameStartMsg(player_id);
+                this.sendPointMsg(player_id);
+                this.sendOneGameAllDataMsg(player_id);
+           }
+        }
         // リロードの場合にもとのプレイヤーに戻る
         for (var p = 0; p < this.players.length; p++){
             if (this.players[p].getUserId() == user_id) {
                 this.players[p].setSocketId(socket_id);
                 this.players[p].setActive(true);
                 console.log("[mahjong.js, addPlayer] %s is readded", user_name);
-                player_id = p;
+                callbackFunc(p);
                 return true;
             }
         }
@@ -97,7 +104,7 @@ class Mahjong {
         if (this.players.length < 4) {
             this.players.push(new Player(this, this.socket, socket_id, user_id, user_name));
             console.log("[mahjong.js, addPlayer] %s is added", user_name);
-            player_id = this.players.length - 1;
+            callbackFunc(this.players.length - 1);
             return true;
         }
         // 定員がいっぱいの場合、user_idが設定されていないcpuがいれば乗り移る
@@ -108,15 +115,13 @@ class Mahjong {
                 this.players[p].setUserName(user_name);
                 this.players[p].setSocketId(socket_id);
                 this.players[p].setActive(true);
-                player_id = p;
+                callbackFunc(p);
                 return true;
             }
         }
-        // 定員がいっぱいの場合
-        if (player_id == -1){
-            console.log("[mahjong.js, addPlayer]定員がいっぱいです");
-            return false;
-        }
+        // 定員がいっぱいの場合（ここまで来たら参加不可
+        console.log("[mahjong.js, addPlayer]定員がいっぱいです");
+        return false;
     }
 
 
@@ -183,21 +188,9 @@ class Mahjong {
         this.honba_count = 0;   // 0本場
         this.state = this.GAME_STATE.PLAYING;
 
-        // ゲームスタートの状態を全ユーザに共有する  FIXME
-        for(var i = 0; i < 4; i++){
-            var rdx = (i + 1) % 4;  // 下家
-            var odx = (i + 2) % 4;  // 対面
-            var ldx = (i + 3) % 4;  // 上家
-            this.players[i].sendMsg('game-status', {
-                seat: i,  // 0:起家 
-                names: [
-                    this.players[i].getUserName(), 
-                    this.players[rdx].getUserName(), 
-                    this.players[odx].getUserName(), 
-                    this.players[ldx].getUserName()
-                ], 
-            });
-        }
+        // ゲームスタートの状態を全ユーザに共有する
+        this.sendGameStartMsg();
+        this.sendPointMsg();
 
         // 1局をスタートする
         setTimeout(this.startOneGame.bind(this), 10);
@@ -272,7 +265,7 @@ class Mahjong {
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
-        // this.tiles = debug.createTenhoTiles();
+        this.tiles = debug.createTenhoTiles();
         // this.tiles = debug.createAllRiichiTiles();
         console.log(this.tiles);
         // 配牌
@@ -287,35 +280,10 @@ class Mahjong {
         this.dora = [this.tiles.pop()];
         this.uradora = [this.tiles.pop()];
         // カンの初期化
-        this.kans = [];  
+        this.kans = [];
 
         // 全ユーザに状態を送る
-        for(var i = 0; i < 4; i++){
-            let ldx = (i + 3) % 4;  // 上家
-            let odx = (i + 2) % 4;  // 対面
-            let rdx = (i + 1) % 4;  // 下家
-            this.players[i].sendMsg('data', {
-                // 自分
-                enable_actions: this.players[i].getEnableActions(), 
-                myHandTiles: {code: 'full', value: this.players[i].getHands()}, 
-                myDiscardTiles: {code: 'full', value: this.players[i].getDiscards()}, 
-                myMeldTiles: {code: 'full', value: this.players[i].getMelds()}, 
-                // 上家
-                leftHandTiles: {code: 'full', value: Array(this.players[ldx].getHands().length).fill(this.secret_id)}, 
-                leftDiscardTiles: {code: 'full', value: this.players[ldx].getDiscards()}, 
-                leftMeldTiles: {code: 'full', value: this.players[ldx].getMelds()}, 
-                // 対面
-                oppositeHandTiles: {code: 'full', value: Array(this.players[odx].getHands().length).fill(this.secret_id)}, 
-                oppositeDiscardTiles: {code: 'full', value: this.players[odx].getDiscards()}, 
-                oppositeMeldTiles: {code: 'full', value: this.players[odx].getMelds()},
-                // 下家
-                rightHandTiles: {code: 'full', value: Array(this.players[rdx].getHands().length).fill(this.secret_id)}, 
-                rightDiscardTiles: {code: 'full', value: this.players[rdx].getDiscards()}, 
-                rightMeldTiles: {code: 'full', value: this.players[rdx].getMelds()},
-                // ドラ
-                doraTiles: {code: 'full', value: this.dora}, 
-            });
-        }
+        this.sendOneGameAllDataMsg();
 
         // 親のツモからスタート
         this.cplayer_idx = this.parent_idx;
@@ -337,7 +305,7 @@ class Mahjong {
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForDrawTile(this.cplayer_idx, draw_tile, this.getFieldInfo());
 
         // 全クライアントに通知
-        this.sendDrawMsgToAll(this.cplayer_idx, draw_tile);
+        this.sendDrawMsg(this.cplayer_idx, draw_tile);
     }
 
 
@@ -363,7 +331,7 @@ class Mahjong {
         // 四風連打の処理
         if (this.#checkSufurenda()){
             for(var i = 0; i < 4; i++) this.players[i].resetEnableActions();
-            this.sendDiscardMsgToAll(p, discard_tile, is_tsumo_giri);
+            this.sendDiscardMsg(p, discard_tile, is_tsumo_giri);
             setTimeout(this.drawnGame.bind(this), 10, "sufurenda");  // 流局
             return;
         }
@@ -378,12 +346,12 @@ class Mahjong {
         this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
 
         // 全ユーザに情報を送る
-        this.sendDiscardMsgToAll(p, discard_tile, is_tsumo_giri);
+        this.sendDiscardMsg(p, discard_tile, is_tsumo_giri);
 
         // 明槓などで新ドラをオープンする
         if(this.is_open_next_dora){
             this.is_open_next_dora = false;
-            this.sendDoraOpenMsgToAll();
+            this.sendDoraOpenMsg();
         }
 
         if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
@@ -440,7 +408,7 @@ class Mahjong {
         }
 
         // プレイヤーpがaction_typeを宣言したことを全員に通知する    
-        this.sendDeclareMsgToAll(p, action_type);
+        this.sendDeclareMsg(p, action_type);
 
         if (action_type == 'kan') {
             var ret = [];
@@ -516,7 +484,7 @@ class Mahjong {
         this.declare_queue.push(action_content);
         
         // この人が宣言したことを全員にpushする
-        this.sendDeclareMsgToAll(p, action_type);
+        this.sendDeclareMsg(p, action_type);
         
         // このプレイヤーの宣言が1番目の場合は、現在設定されているsetTimeoutを解除し、1秒後にselectDeclaredAction関数を実行する
         if (this.declare_queue.length == 1){
@@ -656,7 +624,7 @@ class Mahjong {
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForMeld(p1, p2, discard, [...hands]); 
 
         // 全プレイヤーに情報を送る
-        this.sendMeldMsgToAll(p1, 'pon', meld_info);
+        this.sendMeldMsg(p1, 'pon', meld_info);
     }
 
 
@@ -687,7 +655,7 @@ class Mahjong {
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForMeld(p1, p2, discard, [...hands]); 
 
         // 全プレイヤーに情報を送る
-        this.sendMeldMsgToAll(p1, 'chi', meld_info);
+        this.sendMeldMsg(p1, 'chi', meld_info);
     }
 
 
@@ -721,7 +689,7 @@ class Mahjong {
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForMeld(p1, p2, discard, [...hands]); 
 
         // 全プレイヤーに情報を送る
-        this.sendMeldMsgToAll(p1, 'kan', meld_info);
+        this.sendMeldMsg(p1, 'kan', meld_info);
         
         // 嶺上牌を引く処理に移る（槍槓は発生しない）
         setTimeout(this.drawReplacementTile.bind(this), 10, 'kan'); 
@@ -764,7 +732,7 @@ class Mahjong {
         this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
 
         // 全プレイヤーに情報を送る
-        this.sendMeldMsgToAll(p, 'ankan', meld_info);
+        this.sendMeldMsg(p, 'ankan', meld_info);
 
         if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
             this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), waiting_time, "ankan");
@@ -812,7 +780,7 @@ class Mahjong {
         this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
 
         // 全プレイヤーに情報を送る
-        this.sendMeldMsgToAll(p, 'kakan', meld_info);
+        this.sendMeldMsg(p, 'kakan', meld_info);
 
         if (this.player_skip_responses.every(Boolean)){  // 誰も何もアクション出来ないので、すぐに次のツモにうつる
             this.timeout_id = setTimeout(this.drawReplacementTile.bind(this), waiting_time, "ankan");
@@ -855,11 +823,11 @@ class Mahjong {
         } 
 
         // 全プレイヤーにpが嶺上ツモした情報を送る
-        this.sendDrawMsgToAll(p, replacement_tile, true);
+        this.sendDrawMsg(p, replacement_tile, true);
 
         // 暗槓の場合は新ドラオープン、それ以外の場合は捨てた時にオープンする
         if (kan_type == 'ankan')
-            this.sendDoraOpenMsgToAll();
+            this.sendDoraOpenMsg();
         else
             this.is_open_next_dora = true;
     }  
@@ -899,7 +867,7 @@ class Mahjong {
      */
     performRiichi(player_idx){
         this.players[player_idx].setDiffPoint(-1000);
-        this.sendPointMsgToAll();
+        this.sendPointMsg();
         this.riichi_bar_count += 1;
         // 4人立直流局チェック
         let riichis = [...Array(4)].map((_,i) => this.players[i].getIsRiichi());
@@ -938,8 +906,8 @@ class Mahjong {
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":[p], "special":false}};
         // あがり情報と点数情報をそれぞれ送る
-        this.sendOneGameEndMsgToAll([{"type": "tsumo", "winp":p, "hule":hule, "hands":hands, "tsumo":tsumo}]);
-        this.sendPointMsgToAll();
+        this.sendOneGameEndMsg([{"type": "tsumo", "winp":p, "hule":hule, "hands":hands, "tsumo":tsumo}]);
+        this.sendPointMsg();
     }
 
 
@@ -976,8 +944,8 @@ class Mahjong {
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":ron_players, "special":false}};
         // あがり情報と点数情報をそれぞれ送る
-        this.sendOneGameEndMsgToAll(send_msg, "ron");
-        this.sendPointMsgToAll();
+        this.sendOneGameEndMsg(send_msg);
+        this.sendPointMsg();
     }
 
 
@@ -1031,8 +999,8 @@ class Mahjong {
         this.player_confirm_responses = [false, false, false, false];
         this.next_process_info = {"func": this.forwardGame, "opt": {"win":[], "special":is_special != null}};
         // あがり情報と点数情報をそれぞれ送る
-        this.sendOneGameEndMsgToAll(send_msg, "drawn");
-        this.sendPointMsgToAll();
+        this.sendOneGameEndMsg(send_msg);
+        this.sendPointMsg();
     }
 
 
@@ -1150,13 +1118,77 @@ class Mahjong {
     ///// クライアントに情報を送るメソッド群 /////
 
     /**
-     * draw_playerがdraw_tileをツモしたことを全員に通知する
+     * ゲーム情報（座席、名前）を全員に通知する
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
+     */
+    sendGameStartMsg(send_player_idx = null){
+        for(var i = 0; i < 4; i++){
+            if (send_player_idx != null && send_player_idx != i) continue;
+            var rdx = (i + 1) % 4;  // 下家
+            var odx = (i + 2) % 4;  // 対面
+            var ldx = (i + 3) % 4;  // 上家
+            this.players[i].sendMsg('game-status', {
+                seat: i,  // 0:起家 
+                names: [
+                    this.players[i].getUserName(), 
+                    this.players[rdx].getUserName(), 
+                    this.players[odx].getUserName(), 
+                    this.players[ldx].getUserName()
+                ], 
+            });
+        }
+    }
+
+
+    /**
+     * 現局の全情報を全員に通知する
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
+     */
+    sendOneGameAllDataMsg(send_player_idx = null){
+        for(var i = 0; i < 4; i++){
+            if (send_player_idx != null && send_player_idx != i) continue;
+            let ldx = (i + 3) % 4;  // 上家
+            let odx = (i + 2) % 4;  // 対面
+            let rdx = (i + 1) % 4;  // 下家
+            this.players[i].sendMsg('data', {
+                // 自分
+                enable_actions: this.players[i].getEnableActions(), 
+                myHandTiles: {code: 'full', value: this.players[i].getHands()}, 
+                myDiscardTiles: {code: 'full', value: this.players[i].getDiscards()}, 
+                myMeldTiles: {code: 'full', value: this.players[i].getMelds()}, 
+                myRiichiTurn: this.players[i].getRiichiTurn(), 
+                // 上家
+                leftHandTiles: {code: 'full', value: Array(this.players[ldx].getHands().length).fill(this.secret_id)}, 
+                leftDiscardTiles: {code: 'full', value: this.players[ldx].getDiscards()}, 
+                leftMeldTiles: {code: 'full', value: this.players[ldx].getMelds()}, 
+                leftRiichiTurn: this.players[ldx].getRiichiTurn(), 
+                // 対面
+                oppositeHandTiles: {code: 'full', value: Array(this.players[odx].getHands().length).fill(this.secret_id)}, 
+                oppositeDiscardTiles: {code: 'full', value: this.players[odx].getDiscards()}, 
+                oppositeMeldTiles: {code: 'full', value: this.players[odx].getMelds()},
+                oppositeRiichiTurn: this.players[odx].getRiichiTurn(), 
+                // 下家
+                rightHandTiles: {code: 'full', value: Array(this.players[rdx].getHands().length).fill(this.secret_id)}, 
+                rightDiscardTiles: {code: 'full', value: this.players[rdx].getDiscards()}, 
+                rightMeldTiles: {code: 'full', value: this.players[rdx].getMelds()},
+                rightRiichiTurn: this.players[rdx].getRiichiTurn(), 
+                // ドラ
+                doraTiles: {code: 'full', value: this.dora}, 
+            });
+        }
+    }
+    
+
+    /**
+     * draw_playerがdraw_tileをツモしたことを通知する
      * @param {Number} draw_player 
      * @param {Number} draw_tile 
      * @param {Boolean} is_replacement_draw  嶺上ツモかどうか、デフォルトfalse
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
-    sendDrawMsgToAll(draw_player, draw_tile, is_replacement_draw = false){
+    sendDrawMsg(draw_player, draw_tile, is_replacement_draw = false, send_player_idx = null) {
         for(var i = 0; i < 4; i++){
+            if (send_player_idx != null && send_player_idx != i) continue;
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (draw_player - i + 4) % 4,  // player iから見てどこか 
@@ -1169,14 +1201,16 @@ class Mahjong {
 
 
     /**
-     * discard_playerがdiscard_tileを捨てたことを全員に通知する
+     * discard_playerがdiscard_tileを捨てたことを通知する
      * @param {*} draw_player 
      * @param {*} draw_tile 
      * @param {*} is_tsumo_giri 
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
-    sendDiscardMsgToAll(discard_player, discard_tile, is_tsumo_giri){
+    sendDiscardMsg(discard_player, discard_tile, is_tsumo_giri, send_player_idx = null) {
         // 全ユーザに情報を送る
         for(var i = 0; i < 4; i++){
+            if (send_player_idx != null && send_player_idx != i) continue;
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 action: 'discard',
@@ -1189,13 +1223,15 @@ class Mahjong {
 
 
     /**
-     * action_playerが面子を公開したことを全員に通知する
+     * action_playerが面子を公開したことを通知する
      * @param {Number} action_player 
      * @param {String} action_type   'pon', 'chi', 'kan', 'ankan', 'kakan'のいずれか
      * @param {Array} meld_info      {'tgt_p': Number, 'discard': Number, 'hands': Array}
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
-    sendMeldMsgToAll(action_player, action_type, meld_info){
+    sendMeldMsg(action_player, action_type, meld_info, send_player_idx = null) {
         for(var i = 0; i < 4; i++){
+            if (send_player_idx != null && send_player_idx != i) continue;
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (action_player - i + 4) % 4,  // player iから見てどこか 
@@ -1207,11 +1243,13 @@ class Mahjong {
 
 
     /**
-     * 新ドラを全員に通知する
+     * 新ドラを通知する
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
-    sendDoraOpenMsgToAll(){
+    sendDoraOpenMsg(send_player_idx = null) {
         // ドラの情報を送る
         for (var i = 0; i < 4; i++){
+            if (send_player_idx != null && send_player_idx != i) continue;
             this.players[i].sendMsg('diff-data', {
                 action: 'dora',  
                 tile: this.dora[this.dora.length - 1], 
@@ -1221,12 +1259,14 @@ class Mahjong {
 
 
     /**
-     * declare_playerがaction_typeを宣言したことを全員に通知する
+     * declare_playerがaction_typeを宣言したことを通知する
      * @param {*} declare_player 
      * @param {*} action_type 
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
-    sendDeclareMsgToAll(declare_player, action_type){
+    sendDeclareMsg(declare_player, action_type, send_player_idx = null) {
         for (var i = 0; i < 4; i++) {
+            if (send_player_idx != null && send_player_idx != i) continue;
             this.players[i].sendMsg('declare', {
                 player: (declare_player - i + 4) % 4,  // player iから見てどこか
                 action: action_type, 
@@ -1236,11 +1276,13 @@ class Mahjong {
 
 
     /**
-     * 1局が終わった際に、その結果を全員に通知する
+     * 1局が終わった際に、その結果を通知する
      * @param {Array} results
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
-    sendOneGameEndMsgToAll(results){
+    sendOneGameEndMsg(results, send_player_idx = null) {
         for (var i = 0; i < 4; i++) {
+            if (send_player_idx != null && send_player_idx != i) continue;
             let res = [];
             for (var j = 0; j < results.length; j++) {
                 // プレイヤーi視点の並びに変える
@@ -1260,9 +1302,11 @@ class Mahjong {
 
     /**
      * 現在の点数を全員に通知する
+     * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
-    sendPointMsgToAll(){
+    sendPointMsg(send_player_idx = null){
         for (var i = 0; i < 4; i++) {
+            if (send_player_idx != null && send_player_idx != i) continue;
             let points = [...Array(4)].map((_,j) => this.players[(j + i) % 4].getPoint());  // iから見た点数
             this.players[i].sendMsg('point', points);
         }

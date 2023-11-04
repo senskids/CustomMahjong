@@ -25,6 +25,8 @@ class Player{
         this.hands = [];
         /** 捨牌（タイルID表現） */
         this.discards = [];
+        /** 立直した時の捨て牌のindex (何巡目に立直したか) */
+        this.riichi_turn = null;
         /** 捨牌の自摸切りの有無  FIXME  実装していない */
         this.tumogiris = [];
         /** 鳴牌（鳴き牌表現） */
@@ -80,6 +82,7 @@ class Player{
         this.hands = [...tiles];
         this.melds = [];
         this.discards = [];
+        this.riichi_turn = null;
         this.essence_discards = [];
         this.is_first_turn = true;
         this.is_menzen = true;             
@@ -446,6 +449,7 @@ class Player{
      * @returns  meld_info = {'type': 'kakan', 'from_who': 相対SeatId, 'discard': タイルID, hands: Array（タイルID）}
      */
     performKakan(hand_tile){   
+        console.log(hand_tile);
         this.hands = this.hands.filter(e => e != hand_tile);
         for (var i = 0; i < this.melds.length; i++){
             let meld = this.melds[i];
@@ -456,7 +460,7 @@ class Player{
             if (t2[1] == '0') t2[1] == '5';
             if (t1 == t2){
                 this.melds[i].type = 'kakan';
-                this.melds[i].hands.concat(hand_tile);
+                this.melds[i].hands.push(hand_tile);
                 return this.melds[i];
             }
         }
@@ -471,8 +475,10 @@ class Player{
      */
     declareRiichi(hand_tile){
         this.is_riichi = true;
+        this.is_tenpai = true;
         this.is_oneshot = true;
         if (this.is_first_turn) this.is_double_riichi = true;
+        this.riichi_turn = this.discards.length;
 
         // ツモ牌以外切れなくする
         this.forbidden_discards = this.hands.filter(e => e != hand_tile);
@@ -511,6 +517,9 @@ class Player{
     }
     getIsRiichi(){
         return this.is_riichi;
+    }
+    getRiichiTurn(){
+        return this.riichi_turn;
     }
     getSocketId(){
         return this.socket_id;

@@ -293,7 +293,7 @@ class Player{
                         var v = utils.id2tile[this.hands[i]];
                         if (utils.yaojius.includes(v) && !rets.includes(v)) rets.push(v);
                     }
-                    if (rets.length >= (cands.length - 1)) this.enable_actions.ron = true;
+                    if (rets.length >= 12) this.enable_actions.ron = true;
                 }
                 else{
                     this.enable_actions.ron = true;

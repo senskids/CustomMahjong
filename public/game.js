@@ -54,7 +54,7 @@ const resultView = {
 }
 const handTileSizes = [100, 30, 30, 30];
 const discardTileSizes = [60, 60, 60, 60];
-const meldTileSizes = [60, 60, 60, 60];
+const meldTileSizes = [60, 40, 40, 40];
 
 // Socket.IOのインスタンスを作成
 const socket = io();

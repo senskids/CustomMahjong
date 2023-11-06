@@ -29,6 +29,8 @@ class Mahjong {
         this.riichi_bar_count = 0;   
         /** この局の親のインデックス */
         this.parent_idx = 0;
+        /** カスタムルールの設定 */
+        this.custom_rule = "washizu";  // "normal";
 
         ///// 1ゲーム内で値が変化する変数達 /////
         /** 現在のプレイヤーのインデックス */
@@ -270,7 +272,7 @@ class Mahjong {
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
-        this.tiles = debug.createTenhoTiles();
+        // this.tiles = debug.createTenhoTiles();
         // this.tiles = debug.createAllRiichiTiles();
         console.log(this.tiles);
         // 配牌
@@ -1155,6 +1157,25 @@ class Mahjong {
             let ldx = (i + 3) % 4;  // 上家
             let odx = (i + 2) % 4;  // 対面
             let rdx = (i + 1) % 4;  // 下家
+            
+            let leftHands = this.players[ldx].getHands();
+            let oppositeHands = this.players[odx].getHands();
+            let rightHands = this.players[rdx].getHands();
+            if (this.custom_rule == "normal") {
+                leftHands = leftHands.map(v => this.secret_id);
+                oppositeHands = oppositeHands.map(v => this.secret_id);
+                rightHands = rightHands.map(v => this.secret_id);
+
+            }
+            else if (this.custom_rule == "washizu") {
+                leftHands = leftHands.map(v => (v % 4 != 0)? v: this.secret_id);
+                oppositeHands = oppositeHands.map(v => (v % 4 != 0)? v: this.secret_id);
+                rightHands = rightHands.map(v => (v % 4 != 0)? v: this.secret_id);
+                leftHands.sort((a, b) => a - b);
+                oppositeHands.sort((a, b) => a - b);
+                rightHands.sort((a, b) => a - b);
+            }
+
             this.players[i].sendMsg('data', {
                 // 自分
                 enable_actions: this.players[i].getEnableActions(), 
@@ -1163,17 +1184,17 @@ class Mahjong {
                 myMeldTiles: {code: 'full', value: this.players[i].getMelds()}, 
                 myRiichiTurn: this.players[i].getRiichiTurn(), 
                 // 上家
-                leftHandTiles: {code: 'full', value: Array(this.players[ldx].getHands().length).fill(this.secret_id)}, 
+                leftHandTiles: {code: 'full', value: leftHands}, 
                 leftDiscardTiles: {code: 'full', value: this.players[ldx].getDiscards()}, 
                 leftMeldTiles: {code: 'full', value: this.players[ldx].getMelds()}, 
                 leftRiichiTurn: this.players[ldx].getRiichiTurn(), 
                 // 対面
-                oppositeHandTiles: {code: 'full', value: Array(this.players[odx].getHands().length).fill(this.secret_id)}, 
+                oppositeHandTiles: {code: 'full', value: oppositeHands}, 
                 oppositeDiscardTiles: {code: 'full', value: this.players[odx].getDiscards()}, 
                 oppositeMeldTiles: {code: 'full', value: this.players[odx].getMelds()},
                 oppositeRiichiTurn: this.players[odx].getRiichiTurn(), 
                 // 下家
-                rightHandTiles: {code: 'full', value: Array(this.players[rdx].getHands().length).fill(this.secret_id)}, 
+                rightHandTiles: {code: 'full', value: rightHands}, 
                 rightDiscardTiles: {code: 'full', value: this.players[rdx].getDiscards()}, 
                 rightMeldTiles: {code: 'full', value: this.players[rdx].getMelds()},
                 rightRiichiTurn: this.players[rdx].getRiichiTurn(), 
@@ -1194,11 +1215,17 @@ class Mahjong {
     sendDrawMsg(draw_player, draw_tile, is_replacement_draw = false, send_player_idx = null) {
         for(var i = 0; i < 4; i++){
             if (send_player_idx != null && send_player_idx != i) continue;
+
+            let tile = (draw_player == i)? draw_tile: this.secret_id; 
+            if (this.custom_rule == "washizu") {
+                if (draw_tile % 4 != 0) tile = draw_tile;
+            }
+
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (draw_player - i + 4) % 4,  // player iから見てどこか 
                 action: (is_replacement_draw)? 'replacement-draw': 'draw', 
-                tile: (draw_player == i)? draw_tile: this.secret_id, 
+                tile: tile, 
                 remain_tile_num: this.tiles.length,
             });
         }

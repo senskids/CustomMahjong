@@ -188,6 +188,11 @@ class Mahjong {
         this.honba_count = 0;   // 0本場
         this.state = this.GAME_STATE.PLAYING;
 
+        // プレイヤーのポイントを初期化する
+        this.players.forEach(player => {
+            player.setPoint(25000);
+        });
+
         // ゲームスタートの状態を全ユーザに共有する
         this.sendGameStartMsg();
         this.sendPointMsg();

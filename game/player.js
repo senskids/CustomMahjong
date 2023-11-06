@@ -575,6 +575,9 @@ class Player{
         this.point += diff_point;
         return this.point >= 0;
     }
+    setPoint(point = 25000) {
+        this.point = point;
+    }
 
     /////////////////////////////////////////////
     /////////////////// Utils ///////////////////

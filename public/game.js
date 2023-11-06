@@ -500,6 +500,7 @@ gameStartBtn.addEventListener('click', (event) => {
     music.loop = true;
 });
 
+// スピーカーボタンが押されたときの処理
 musicBtn.addEventListener('click', (event)=>{
     if(music.muted == false){
         music.pause();

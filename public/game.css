@@ -341,5 +341,31 @@
   left:5%;
   width:90%;
   height:90%;
-  background-color: #ff0000a0;
+  background-color: rgba(255,237,179,0.9);
+  box-shadow: 0 10px 25px 0 rgba(0, 0, 0, .5);
+}
+.score{
+  text-align: right;
+  font-size: 2rem;
+  color: rgba(212, 39, 9, 0.863);
+  margin: 3% 10% 0% 10%;
+}
+.result-tile-area{
+  display: flex;
+  justify-content: space-evenly;
+  background-color: rgba(200, 200, 200, 0.7);
+  margin: 0% 10%;
+  padding: 2% 5%;
+}
+#result-hands-area{
+  margin: 1rem;
+}
+#result-melds-area{
+  margin: 1rem;
+}
+#result-yaku-area{
+  background-color: rgba(200, 200, 200, 0.7);
+  font-size: 1rem;
+  padding: 2% 10%;
+  margin: 0% 10%;
 }

@@ -94,6 +94,8 @@ function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickList
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
+        // 鷲巣麻雀
+        if (tile % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
         let style = `width: ${imgWidth}px;`;
@@ -134,6 +136,8 @@ function renderDiscardTiles(el, tiles, imgWidth, riichiTurnIdx = null) {
         const tileEl = document.createElement('img');
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
+        // 鷲巣麻雀
+        if (tile % 4 != 0) tileEl.classList.add("opacity-tile");
         if (idx != riichiTurnIdx){
             tileEl.style = `width: ${imgWidth}px; transform: translate(0)`;
             el.appendChild(tileEl);
@@ -196,6 +200,8 @@ function renderMeldTiles(el, tiles, imgWidth){
         for (let i = 0; i < renderTiles.length; i++) {
             const tileEl = document.createElement('img');
             tileEl.src = key2fname_map[renderTiles[i]];
+            // 鷲巣麻雀
+            if (renderTiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
             if (renderOpts[i] == 0) {      // 通常の手出し牌
                 tileEl.style = `width: ${W1}px; transform: translate(${X}px);`;
                 X -= W10;
@@ -219,6 +225,8 @@ renderDoraTiles = function(el, tiles, img_width){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     for (var i = 0; i < 5; i++){  // ドラ表示が5枚になるようにする
         const tileEl = document.createElement('img');
+        // 鷲巣麻雀
+        if (tiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.classList.add('hand-tile');
         tileEl.src = key2fname_map[(i < tiles.length)? tiles[i] : backcard_id];
         tileEl.style = `width: ${img_width};`;

@@ -343,3 +343,8 @@
   height:90%;
   background-color: #ff0000a0;
 }
+
+/* 鷲巣麻雀関係 */
+.opacity-tile {
+  opacity: 0.7;
+}

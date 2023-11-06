@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "youseegreen&Maaagit&takumi765",
+  "author": "youseegreen&Maaagit&takumi765&fibonacci0112358&ponmas",
   "license": "ISC",
   "dependencies": {
     "@kobalab/majiang-core": "^1.1.0",

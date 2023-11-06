@@ -84,7 +84,7 @@ io.on('connection', (socket) => {
 
     // プレイヤーが鳴きを行ったときの処理
     socket.on('declare-action', (action_type) => {
-        game.declareAction(socket.id, action_type);
+        game.notTurnPlayerDeclareAction(socket.id, action_type);
     });
 
     socket.on('select-meld-cand', (hands) => {
@@ -93,17 +93,25 @@ io.on('connection', (socket) => {
 
     // プレイヤーが加槓、暗槓を宣言したときの処理
     socket.on('declare-kan', (hands) => {
-        game.declareKan(socket.id, hands);
+        if (hands.length == 4)
+            game.performAnkan(socket.id, hands);
+        else
+            game.performKakan(socket.id, hands);
     });
 
     // プレイヤーが立直を宣言したときの処理
-    socket.on('declare-riichi', () => {
-        game.declareRiichi(socket.id, discard_tile);
+    socket.on('declare-riichi', (discardTile) => {
+        game.declareRiichi(socket.id, discardTile);
     });
     
     // プレイヤーがツモあがりを宣言したときの処理
     socket.on('declare-tsumo', () => {
         game.declareTsumo(socket.id);
+    });
+
+    // プレイヤーが確認したので次へ進むボタンを押した時の処理
+    socket.on('confirmed', () => {
+        game.doConfirm(socket.id);
     });
     
     // 切断時の処理

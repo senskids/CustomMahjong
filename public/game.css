@@ -31,9 +31,9 @@
 
   .main-container {
     margin-top: 3px;
-     width: 100%;
-     display: flex;
-     background-color: #eeeeeeff;
+    width: 100%;
+    display: flex;
+    background-color: #eeeeeeff;
   }
   
   #game-board {
@@ -43,7 +43,50 @@
     height: 900px;
     aspect-ratio: 15 / 9;
     /* margin: auto; */
-    background-color: #ffffffff;
+    background-color: rgba(0, 128, 0, 0.664);
+  }
+  .player-info-area{
+    background-color: rgba(219, 219, 219, 0.7);
+    display: inline-block;
+    min-inline-size: 100px;
+    writing-mode: horizontal-tb; 
+    border-radius: 10%;
+    font-weight: bold;
+    font-size: medium;
+    padding-bottom: 0.3rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 10px 25px 0 rgba(0, 0, 0, .5);
+  }
+  .player-info{
+    opacity: 100%;
+  }
+  .player-status{
+    display: flex;
+    justify-content: space-around;
+    padding: 5% 0% 5% 0%;
+    margin-bottom: 5%;
+    background-color: rgba(110, 110, 173, 0.925);
+    border-radius: 10%;
+  }
+  .player-wind{
+    color: white;
+  }
+  .player-point{
+    text-align: right;
+    display: inline-block;
+    min-inline-size: 50px;
+    writing-mode: horizontal-tb; 
+    padding: 2% 6%;
+    background-color: rgba(26, 26, 61, 0.555);
+    border-radius: 10%;
+    color: white;
+    font-size: small;
+    font-weight: lighter;
+  }
+  .player-name{
+    margin: 0 5px 0 5px;
+    color: #000;
+    /* color: rgb(252, 252, 19); */
   }
 
   #my-main-area {
@@ -76,6 +119,12 @@
     left: 0%;  /* left + widtgh */
     width: calc(70% * (900 / 1500));  /* height / aspect*/
     height: calc(13% * (1500 / 900));  /* width / aspect*/
+  }
+
+  .meld-area{
+    margin-left: auto;
+    margin-right: 2%;
+    margin-top: auto;
   }
 
   #my-discard-area {
@@ -114,27 +163,29 @@
   .my{
     width: 100%;
     height: 100%;
-    background-color:#0000ff80;
-    display: flex;
+    padding: 1rem;
+    /* background-color:#0000ff80; */
   }
   .right{
     width: 100%;
     height: 100%;
-    background-color:#00ffff80;
+    padding: 1rem;
+    /* background-color:#00ffff80; */
     transform: rotate(-90deg);
     transform-origin: right bottom;
-    display: flex;
   }
   .opposite{
     width: 100%;
     height: 100%;
-    background-color:#ff00ff80;
+    padding: 1rem;
+    /* background-color:#ff00ff80; */
     transform: rotate(180deg);
   }
   .left{
     width: 100%;
     height: 100%;
-    background-color:#ffff0080;
+    padding: 1rem;
+    /* background-color:#ffff0080; */
     transform: rotate(90deg);
     transform-origin: left bottom;
   }
@@ -146,8 +197,6 @@
     display: flex;
   }
   
-
-
 
   #game-info-area {
     position: absolute;
@@ -235,10 +284,62 @@
       inset 2px 2px 3px rgba(0, 0, 0, 0.6);
   }
 
-  .hand-tiles{
-    margin-right: 100px;
+  #setting{
+    position: absolute;
+    top: 3%;
+    left: 95%;
+  }
+  #reload{
+    background-color: rgb(219, 219, 219);
+    border-radius: 15%;
+    padding: 5px;
+  }
+  #music{
+    background-color: rgb(219, 219, 219);
+    border-radius: 15%;
+    padding: 3px;
+    margin-top: 5%;
+  }
+  #point{
+    text-align: center;
+    width: 30%;
+    margin-left: 3rem;
+    padding-top: 2rem;
+  }
+  #point .pointTitle{
+    background-color: white;
+    font-size: 2rem;
+    padding: 2rem 0rem 6rem 0rem;
   }
 
-  .meld-tiles{
-    margin-left: 100px;
-  }
+/* プレイヤーの宣言の表示関係 */
+.declare-window{
+  position: absolute;
+  margin: auto auto auto auto;
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.declare-msg{
+  display: none;
+  background-color: #fff;
+  font-size: xx-large;
+  position: relative;
+  padding: 3px;
+  border-radius: 25%;
+  margin: auto;
+  border: solid;
+}
+
+
+/* あがり結果画面 */
+#result-area{
+  display: none;
+  position: absolute;
+  top:5%;
+  left:5%;
+  width:90%;
+  height:90%;
+  background-color: #ff0000a0;
+}

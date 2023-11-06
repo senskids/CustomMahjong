@@ -1,0 +1,35 @@
+body{
+  background-color: rgb(115, 202, 115);
+}
+
+h1{
+  text-align: center;
+  margin: 11rem 0rem 6rem 0rem;
+}
+#game-title{
+  background-color: rgb(221, 221, 148);
+  border: solid black;
+  font-size: 5rem;
+  color: #ff00ff9a;
+  padding: 3%;
+}
+#login-form{
+  text-align: center;
+}
+.caption{
+  font-size: 2rem;
+}
+#username{
+  font-size: 1.5rem;
+}
+#password{
+  font-size: 1.5rem;
+}
+button{
+  width: 5em;
+  height: 2em;
+  border-radius: 10%;
+  background-color: rgb(201, 201, 122);
+  font-size: 2rem;
+  margin-top: 1rem;
+}

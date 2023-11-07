@@ -289,6 +289,13 @@
     top: 3%;
     left: 95%;
   }
+  #setting-area{
+    background-color: aquamarine;
+    text-align: center;
+    width: 30%;
+    margin-left: 3rem;
+    padding-top: 2rem;
+  }
   #reload{
     background-color: rgb(219, 219, 219);
     border-radius: 15%;
@@ -302,9 +309,9 @@
   }
   #point{
     text-align: center;
-    width: 30%;
-    margin-left: 3rem;
-    padding-top: 2rem;
+    width: 80%;
+    margin: 5%;
+    padding: 2rem;
   }
   #point .pointTitle{
     background-color: white;
@@ -347,4 +354,21 @@
 /* 鷲巣麻雀関係 */
 .opacity-tile {
   opacity: 0.7;
+}
+
+.rule-setting-area{
+  width: 90%;
+  margin: auto;
+  font-size: xx-large;
+}
+.setting-title {
+  padding: 2rem;
+}
+.rule-setting-area label{
+  display: block;
+  background-color: aqua; 
+  width: 80%;
+  margin: 0% auto 5% auto;
+  padding: 1% 2% 1% 2%;
+  border-radius: 20px;
 }

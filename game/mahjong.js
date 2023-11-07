@@ -30,7 +30,7 @@ class Mahjong {
         /** この局の親のインデックス */
         this.parent_idx = 0;
         /** カスタムルールの設定 */
-        this.custom_rule = "washizu";  // "normal";
+        this.custom_rule = "normal";
 
         ///// 1ゲーム内で値が変化する変数達 /////
         /** 現在のプレイヤーのインデックス */
@@ -162,14 +162,18 @@ class Mahjong {
 
     /** 
      * 半荘を開始する  
+     * @param {JSON} rule_setting  {"washizu": Boolean, "ruleXX": Boolean}
      * @next startOneGame
      */
-    startGame() {
+    startGame(rule_setting) {
         // 既にゲームがスタートしている時はreturnする
         if (this.state == this.GAME_STATE.PLAYING) {
             // 現在はDebug用に強制的に次のゲームをスタートする  FIXME
             // return;
         }
+
+        if (rule_setting.washizu) this.custom_rule = "washizu";
+        else this.custom_rule = "normal";
 
         // プレイヤーが4人揃っていなければCPUを追加する
         for (var i = 0; this.players.length < 4; i++){
@@ -1135,6 +1139,7 @@ class Mahjong {
             var odx = (i + 2) % 4;  // 対面
             var ldx = (i + 3) % 4;  // 上家
             this.players[i].sendMsg('game-status', {
+                rule: this.custom_rule, 
                 seat: i,  // 0:起家 
                 names: [
                     this.players[i].getUserName(), 
@@ -1161,13 +1166,12 @@ class Mahjong {
             let leftHands = this.players[ldx].getHands();
             let oppositeHands = this.players[odx].getHands();
             let rightHands = this.players[rdx].getHands();
-            if (this.custom_rule == "normal") {
+            if (this.custom_rule === "normal") {
                 leftHands = leftHands.map(v => this.secret_id);
                 oppositeHands = oppositeHands.map(v => this.secret_id);
                 rightHands = rightHands.map(v => this.secret_id);
-
             }
-            else if (this.custom_rule == "washizu") {
+            else if (this.custom_rule === "washizu") {
                 leftHands = leftHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 oppositeHands = oppositeHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 rightHands = rightHands.map(v => (v % 4 != 0)? v: this.secret_id);
@@ -1217,7 +1221,7 @@ class Mahjong {
             if (send_player_idx != null && send_player_idx != i) continue;
 
             let tile = (draw_player == i)? draw_tile: this.secret_id; 
-            if (this.custom_rule == "washizu") {
+            if (this.custom_rule === "washizu") {
                 if (draw_tile % 4 != 0) tile = draw_tile;
             }
 

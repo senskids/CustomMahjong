@@ -62,8 +62,8 @@ io.on('connection', (socket) => {
     });
 
     // プレイヤーがstartボタンを押した時の処理
-    socket.on('start-game', () => {
-        game.startGame();
+    socket.on('start-game', (rule_setting) => {
+        game.startGame(rule_setting);
     });
 
     // プレイヤーがstopボタンを押した時の処理

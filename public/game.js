@@ -395,14 +395,40 @@ socket.on('declare', (data) => {
 
 
 socket.on('select-meld-cand', (data) => {
-    if (data.length == 1)
+    if (data.length == 1) 
         socket.emit('select-meld-cand', data[0]);
-    else{
-        console.log("select-meld-cand", data);
-        // FIXME 鳴ける組み合わせを表示して、選択できるようにする
-        socket.emit('select-meld-cand', data[1]);
-    }
+    else
+        showCandidate(data);
 });
+
+// 鳴きの候補を表示する
+function showCandidate(arrs) {
+    // action areaを非表示にする
+    const actionArea = document.getElementById("action-area");
+    actionArea.style.display = "none";
+    // meld-cand-areaに牌を表示する
+    const parent = document.getElementById("meld-cand-area2");
+    for (var i = 0; i < arrs.length; i++) {
+        const divEl = document.createElement('div');
+        divEl.classList.add("cand");
+        for (var j = 0; j < arrs[i].length; j++) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[arrs[i][j]];
+            imgEl.style = `width: ${discardTileSizes[0]}px;`;
+            divEl.append(imgEl)
+        }
+        let tgt = arrs[i].map(v=>v);  // 下の関数で参照するためにコピー
+        divEl.addEventListener('click', () => {
+            // meld-candがクリックされたらサーバーに送信してaction areaを表示する
+            socket.emit('select-meld-cand', tgt);
+            const parent = document.getElementById("meld-cand-area2");
+            while(parent.firstChild) parent.removeChild(parent.firstChild);  
+            const actionArea = document.getElementById("action-area");
+            actionArea.style.display = "flex";
+        });
+        parent.appendChild(divEl);
+    }
+}
 
 
 socket.on('select-kan-cand', (data) => {

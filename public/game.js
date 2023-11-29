@@ -59,7 +59,7 @@ const resultView = {
     "yaku":document.getElementById('result-yaku-area'),
     "score":document.getElementById('result-score-area'),
 }
-const handTileSizes = [100, 30, 30, 30];
+const handTileSizes = [90, 30, 30, 30];
 const discardTileSizes = [60, 60, 60, 60];
 const meldTileSizes = [60, 40, 40, 40];
 
@@ -294,7 +294,12 @@ socket.on('diff-data', (data) => {
         tileNum.textContent = data.remain_tile_num;  // 残り牌数を更新する
         lastCommands[p] = 'draw';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], true, null, p == 0);
-        if (data.opt != null) console.log(data.opt.next_tsumo);
+        if (data.opt != null && data.opt.next_tsumo != null) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[data.opt.next_tsumo];
+            imgEl.style = `width: ${handTileSizes[0] - 20}px; margin-left: 20px; opacity: 0.7;`;
+            handEls[p].append(imgEl);
+        }
         return;
     }
     // 捨て牌
@@ -346,7 +351,12 @@ socket.on('diff-data', (data) => {
         renderHandTiles(handEls[p1], handTiles[p1], handTileSizes[p1], false, null, p1 == 0);
         renderMeldTiles(meldEls[p1], meldTiles[p1], meldTileSizes[p1]);
         renderDiscardTiles(discardEls[p2], discardTiles[p2], discardTileSizes[p2], riichiTurns[p2]);
-        if (data.opt != null) console.log("a", data.opt.next_tsumo);
+        if (data.opt != null && data.opt.next_tsumo != null) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[data.opt.next_tsumo];
+            imgEl.style = `width: ${handTileSizes[0] - 20}px; margin-left: 20px; opacity: 0.7;`;
+            handEls[p1].append(imgEl);
+        }
         return;
     }
     // 自分からカン

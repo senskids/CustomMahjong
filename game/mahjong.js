@@ -1167,18 +1167,18 @@ class Mahjong {
             let leftHands = this.players[ldx].getHands();
             let oppositeHands = this.players[odx].getHands();
             let rightHands = this.players[rdx].getHands();
-            if (this.custom_rule === "normal") {
-                leftHands = leftHands.map(v => this.secret_id);
-                oppositeHands = oppositeHands.map(v => this.secret_id);
-                rightHands = rightHands.map(v => this.secret_id);
-            }
-            else if (this.custom_rule === "washizu") {
+            if (this.custom_rule === "washizu") {
                 leftHands = leftHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 oppositeHands = oppositeHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 rightHands = rightHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 leftHands.sort((a, b) => a - b);
                 oppositeHands.sort((a, b) => a - b);
                 rightHands.sort((a, b) => a - b);
+            }
+            else {
+                leftHands = leftHands.map(v => this.secret_id);
+                oppositeHands = oppositeHands.map(v => this.secret_id);
+                rightHands = rightHands.map(v => this.secret_id);
             }
 
             this.players[i].sendMsg('data', {
@@ -1226,7 +1226,7 @@ class Mahjong {
                 if (draw_tile % 4 != 0) tile = draw_tile;
             }
             let opt = null;
-            if (i == draw_player && this.tiles.length >= 4) {
+            if (this.custom_rule === "nextview" && i == draw_player && this.tiles.length >= 4) {
                 opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
             } 
 
@@ -1276,7 +1276,7 @@ class Mahjong {
             if (send_player_idx != null && send_player_idx != i) continue;
 
             let opt = null;
-            if (i == action_player && this.tiles.length >= 4) {
+            if (this.custom_rule === "nextview" && i == action_player && this.tiles.length >= 4) {
                 opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
             } 
 

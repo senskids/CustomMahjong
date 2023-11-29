@@ -162,7 +162,7 @@ class Mahjong {
 
     /** 
      * 半荘を開始する  
-     * @param {JSON} rule_setting  {"washizu": Boolean, "ruleXX": Boolean}
+     * @param {JSON} rule_setting  {"washizu": Boolean, "nextview": Boolean}
      * @next startOneGame
      */
     startGame(rule_setting) {
@@ -173,6 +173,7 @@ class Mahjong {
         }
 
         if (rule_setting.washizu) this.custom_rule = "washizu";
+        else if (rule_setting.nextview) this.custom_rule = "nextview";
         else this.custom_rule = "normal";
 
         // プレイヤーが4人揃っていなければCPUを追加する
@@ -1224,6 +1225,10 @@ class Mahjong {
             if (this.custom_rule === "washizu") {
                 if (draw_tile % 4 != 0) tile = draw_tile;
             }
+            let opt = null;
+            if (i == draw_player && this.tiles.length >= 4) {
+                opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
+            } 
 
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
@@ -1231,6 +1236,7 @@ class Mahjong {
                 action: (is_replacement_draw)? 'replacement-draw': 'draw', 
                 tile: tile, 
                 remain_tile_num: this.tiles.length,
+                opt: opt,
             });
         }
     }
@@ -1268,11 +1274,18 @@ class Mahjong {
     sendMeldMsg(action_player, action_type, meld_info, send_player_idx = null) {
         for(var i = 0; i < 4; i++){
             if (send_player_idx != null && send_player_idx != i) continue;
+
+            let opt = null;
+            if (i == action_player && this.tiles.length >= 4) {
+                opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
+            } 
+
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (action_player - i + 4) % 4,  // player iから見てどこか 
                 action: action_type, 
                 meld: meld_info, 
+                opt: opt,
             });
         }      
     }

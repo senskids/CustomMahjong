@@ -14,10 +14,10 @@ key2fname_map[4 * 22 + 0] = './pic/s0.png';
 const idx2player_map = ['my', 'right', 'opposite', 'left'];
 
 // ゲームルール
-const gameRule = {"washizu": false, "ruleXX": false};
+const gameRule = {"washizu": false, "nextview": false};
 const gameRuleBtn = {
     "washizu": document.getElementById("washizu-btn"), 
-    "ruleXX": document.getElementById("ruleXX-btn"), 
+    "nextview": document.getElementById("nextview-btn"), 
 };
 
 // ゲーム画面の要素を取得
@@ -294,6 +294,7 @@ socket.on('diff-data', (data) => {
         tileNum.textContent = data.remain_tile_num;  // 残り牌数を更新する
         lastCommands[p] = 'draw';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], true, null, p == 0);
+        if (data.opt != null) console.log(data.opt.next_tsumo);
         return;
     }
     // 捨て牌
@@ -345,6 +346,7 @@ socket.on('diff-data', (data) => {
         renderHandTiles(handEls[p1], handTiles[p1], handTileSizes[p1], false, null, p1 == 0);
         renderMeldTiles(meldEls[p1], meldTiles[p1], meldTileSizes[p1]);
         renderDiscardTiles(discardEls[p2], discardTiles[p2], discardTileSizes[p2], riichiTurns[p2]);
+        if (data.opt != null) console.log("a", data.opt.next_tsumo);
         return;
     }
     // 自分からカン
@@ -377,6 +379,7 @@ socket.on('diff-data', (data) => {
         lastCommands[p] = 'mykan';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], false, null, p == 0);
         renderMeldTiles(meldEls[p], meldTiles[p], meldTileSizes[p]);
+        if (data.opt != null) console.log("a", data.opt.next_tsumo);
         return;
     }
 });
@@ -527,15 +530,21 @@ socket.on('game-status', (data) => {
     // ゲームルールを取得する
     if (data.rule === "washizu") {
         gameRule.washizu = true;
-        gameRule.ruleXX = false;
+        gameRule.nextview = false;
         gameRuleBtn.washizu.checked = true;
-        gameRuleBtn.ruleXX.checked = false;
+        gameRuleBtn.nextview.checked = false;
+    }
+    else if (data.rule === "nextview"){
+        gameRule.washizu = false;
+        gameRule.nextview = true;
+        gameRuleBtn.washizu.checked = false;
+        gameRuleBtn.nextview.checked = true;
     }
     else {
         gameRule.washizu = false;
-        gameRule.ruleXX = false;
+        gameRule.nextview = false;
         gameRuleBtn.washizu.checked = false;
-        gameRuleBtn.ruleXX.checked = false;
+        gameRuleBtn.nextview.checked = false;
     }
 
     // data.seat : 起家は誰か（fixme : 誰が本局の親（東）かに変える）
@@ -552,7 +561,7 @@ socket.on('game-status', (data) => {
 // ゲームスタートボタンが押された時の処理
 gameStartBtn.addEventListener('click', (event) => {
     gameRule.washizu = gameRuleBtn.washizu.checked;
-    gameRule.ruleXX = gameRuleBtn.ruleXX.checked;
+    gameRule.nextview = gameRuleBtn.nextview.checked;
     socket.emit('start-game', gameRule);
     music.play();
     music.loop = true;

@@ -30,7 +30,7 @@ class Mahjong {
         /** この局の親のインデックス */
         this.parent_idx = 0;
         /** カスタムルールの設定 */
-        this.custom_rule = "normal";
+        this.custom_rule = [];  // 有効なルールを要素に入れる
 
         ///// 1ゲーム内で値が変化する変数達 /////
         /** 現在のプレイヤーのインデックス */
@@ -162,18 +162,17 @@ class Mahjong {
 
     /** 
      * 半荘を開始する  
-     * @param {JSON} rule_setting  {"washizu": Boolean, "ruleXX": Boolean}
+     * @param {Array} active_rules  [], ["washizu"], ["futureview"], ["washizu", futureview]
      * @next startOneGame
      */
-    startGame(rule_setting) {
+    startGame(active_rules) {
         // 既にゲームがスタートしている時はreturnする
         if (this.state == this.GAME_STATE.PLAYING) {
             // 現在はDebug用に強制的に次のゲームをスタートする  FIXME
             // return;
         }
-
-        if (rule_setting.washizu) this.custom_rule = "washizu";
-        else this.custom_rule = "normal";
+        // 競合するルールがあればここでそれを解決する
+        this.custom_rule = [...active_rules];
 
         // プレイヤーが4人揃っていなければCPUを追加する
         for (var i = 0; this.players.length < 4; i++){
@@ -1166,18 +1165,18 @@ class Mahjong {
             let leftHands = this.players[ldx].getHands();
             let oppositeHands = this.players[odx].getHands();
             let rightHands = this.players[rdx].getHands();
-            if (this.custom_rule === "normal") {
-                leftHands = leftHands.map(v => this.secret_id);
-                oppositeHands = oppositeHands.map(v => this.secret_id);
-                rightHands = rightHands.map(v => this.secret_id);
-            }
-            else if (this.custom_rule === "washizu") {
+            if (this.custom_rule.includes("washizu")) {
                 leftHands = leftHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 oppositeHands = oppositeHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 rightHands = rightHands.map(v => (v % 4 != 0)? v: this.secret_id);
                 leftHands.sort((a, b) => a - b);
                 oppositeHands.sort((a, b) => a - b);
                 rightHands.sort((a, b) => a - b);
+            }
+            else {
+                leftHands = leftHands.map(v => this.secret_id);
+                oppositeHands = oppositeHands.map(v => this.secret_id);
+                rightHands = rightHands.map(v => this.secret_id);
             }
 
             this.players[i].sendMsg('data', {
@@ -1221,9 +1220,13 @@ class Mahjong {
             if (send_player_idx != null && send_player_idx != i) continue;
 
             let tile = (draw_player == i)? draw_tile: this.secret_id; 
-            if (this.custom_rule === "washizu") {
+            if (this.custom_rule.includes("washizu")) {
                 if (draw_tile % 4 != 0) tile = draw_tile;
             }
+            let opt = null;
+            if (this.custom_rule.includes("futureview") && i == draw_player && this.tiles.length >= 4) {
+                opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
+            } 
 
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
@@ -1231,6 +1234,7 @@ class Mahjong {
                 action: (is_replacement_draw)? 'replacement-draw': 'draw', 
                 tile: tile, 
                 remain_tile_num: this.tiles.length,
+                opt: opt,
             });
         }
     }
@@ -1268,11 +1272,18 @@ class Mahjong {
     sendMeldMsg(action_player, action_type, meld_info, send_player_idx = null) {
         for(var i = 0; i < 4; i++){
             if (send_player_idx != null && send_player_idx != i) continue;
+
+            let opt = null;
+            if (this.custom_rule.includes("futureview") && i == action_player && this.tiles.length >= 4) {
+                opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
+            } 
+
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (action_player - i + 4) % 4,  // player iから見てどこか 
                 action: action_type, 
                 meld: meld_info, 
+                opt: opt,
             });
         }      
     }

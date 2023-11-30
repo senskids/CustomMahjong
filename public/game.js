@@ -14,11 +14,11 @@ key2fname_map[4 * 22 + 0] = './pic/s0.png';
 const idx2player_map = ['my', 'right', 'opposite', 'left'];
 
 // ゲームルール
-const gameRule = {"washizu": false, "ruleXX": false};
-const gameRuleBtn = {
-    "washizu": document.getElementById("washizu-btn"), 
-    "ruleXX": document.getElementById("ruleXX-btn"), 
-};
+const gameRuleList = ["washizu", "futureview"];
+const gameRuleBtns = {};
+gameRuleList.forEach(rule => {
+   gameRuleBtns[rule] = document.getElementById(`${rule}-btn`);
+});
 
 // ゲーム画面の要素を取得
 const gameEl = document.querySelector('#field');
@@ -59,7 +59,7 @@ const resultView = {
     "yaku":document.getElementById('result-yaku-area'),
     "score":document.getElementById('result-score-area'),
 }
-const handTileSizes = [100, 30, 30, 30];
+const handTileSizes = [90, 30, 30, 30];
 const discardTileSizes = [60, 60, 60, 60];
 const meldTileSizes = [60, 40, 40, 40];
 
@@ -99,10 +99,11 @@ let lastCommands = [null, null, null, null];  // 各プレイヤーの直前の�
  */
 function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickListener){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
+    let isWashizu = gameRuleBtns["washizu"].checked;
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
         // 鷲巣麻雀
-        if (gameRule.washizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
+        if (isWashizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
         let style = `width: ${imgWidth}px;`;
@@ -138,13 +139,14 @@ function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickList
  */
 function renderDiscardTiles(el, tiles, imgWidth, riichiTurnIdx = null) {
     while(el.firstChild) el.removeChild(el.firstChild);  
+    let isWashizu = gameRuleBtns["washizu"].checked;
     // 描画
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
         // 鷲巣麻雀
-        if (gameRule.washizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
+        if (isWashizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
         if (idx != riichiTurnIdx){
             tileEl.style = `width: ${imgWidth}px; transform: translate(0)`;
             el.appendChild(tileEl);
@@ -179,6 +181,8 @@ function renderMeldTiles(el, tiles, imgWidth){
     const ROT1 = W4 - W30;
     const ROT2 = ROT1 + W2;
 
+    let isWashizu = gameRuleBtns["washizu"].checked;
+
     tiles.forEach((meld, _) => {
         let renderTiles = [];
         let renderOpts = [];
@@ -208,7 +212,7 @@ function renderMeldTiles(el, tiles, imgWidth){
             const tileEl = document.createElement('img');
             tileEl.src = key2fname_map[renderTiles[i]];
             // 鷲巣麻雀
-            if (gameRule.washizu && renderTiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
+            if (isWashizu && renderTiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
             if (renderOpts[i] == 0) {      // 通常の手出し牌
                 tileEl.style = `width: ${W1}px; transform: translate(${X}px);`;
                 X -= W10;
@@ -230,11 +234,12 @@ function renderMeldTiles(el, tiles, imgWidth){
 renderDoraTiles = function(el, tiles, img_width){
     const backcard_id = key2fname_map.length - 1;
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
-    const iMax = gameRule.washizu? tiles.length: 5;
+    let isWashizu = gameRuleBtns["washizu"].checked;
+    const iMax = isWashizu? tiles.length: 5;
     for (var i = 0; i < iMax; i++){  // ドラ表示が5枚になるようにする
         const tileEl = document.createElement('img');
         // 鷲巣麻雀
-        if (gameRule.washizu && tiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
+        if (isWashizu && tiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.classList.add('hand-tile');
         tileEl.src = key2fname_map[(i < tiles.length)? tiles[i] : backcard_id];
         tileEl.style = `width: ${img_width};`;
@@ -294,6 +299,12 @@ socket.on('diff-data', (data) => {
         tileNum.textContent = data.remain_tile_num;  // 残り牌数を更新する
         lastCommands[p] = 'draw';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], true, null, p == 0);
+        if (data.opt != null && data.opt.next_tsumo != null) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[data.opt.next_tsumo];
+            imgEl.style = `width: ${handTileSizes[0] - 20}px; margin-left: 20px; opacity: 0.7;`;
+            handEls[p].append(imgEl);
+        }
         return;
     }
     // 捨て牌
@@ -345,6 +356,12 @@ socket.on('diff-data', (data) => {
         renderHandTiles(handEls[p1], handTiles[p1], handTileSizes[p1], false, null, p1 == 0);
         renderMeldTiles(meldEls[p1], meldTiles[p1], meldTileSizes[p1]);
         renderDiscardTiles(discardEls[p2], discardTiles[p2], discardTileSizes[p2], riichiTurns[p2]);
+        if (data.opt != null && data.opt.next_tsumo != null) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[data.opt.next_tsumo];
+            imgEl.style = `width: ${handTileSizes[0] - 20}px; margin-left: 20px; opacity: 0.7;`;
+            handEls[p1].append(imgEl);
+        }
         return;
     }
     // 自分からカン
@@ -377,6 +394,7 @@ socket.on('diff-data', (data) => {
         lastCommands[p] = 'mykan';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], false, null, p == 0);
         renderMeldTiles(meldEls[p], meldTiles[p], meldTileSizes[p]);
+        if (data.opt != null) console.log("a", data.opt.next_tsumo);
         return;
     }
 });
@@ -524,19 +542,8 @@ socket.on('point', (points) => {
 
 
 socket.on('game-status', (data) => {
-    // ゲームルールを取得する
-    if (data.rule === "washizu") {
-        gameRule.washizu = true;
-        gameRule.ruleXX = false;
-        gameRuleBtn.washizu.checked = true;
-        gameRuleBtn.ruleXX.checked = false;
-    }
-    else {
-        gameRule.washizu = false;
-        gameRule.ruleXX = false;
-        gameRuleBtn.washizu.checked = false;
-        gameRuleBtn.ruleXX.checked = false;
-    }
+    for (let i = 0; i < gameRuleList.length; i++) 
+        gameRuleBtns[gameRuleList[i]].checked = data.includes(gameRuleList[i]);
 
     // data.seat : 起家は誰か（fixme : 誰が本局の親（東）かに変える）
     data.names.forEach((e, i)=>{
@@ -551,9 +558,8 @@ socket.on('game-status', (data) => {
 
 // ゲームスタートボタンが押された時の処理
 gameStartBtn.addEventListener('click', (event) => {
-    gameRule.washizu = gameRuleBtn.washizu.checked;
-    gameRule.ruleXX = gameRuleBtn.ruleXX.checked;
-    socket.emit('start-game', gameRule);
+    let activeGameRule = gameRuleList.filter(v => gameRuleBtns[v].checked);
+    socket.emit('start-game', activeGameRule);
     music.play();
     music.loop = true;
 });

@@ -29,6 +29,8 @@ class Mahjong {
         this.riichi_bar_count = 0;   
         /** この局の親のインデックス */
         this.parent_idx = 0;
+        /** カスタムルールの設定 */
+        this.custom_rule = [];  // 有効なルールを要素に入れる
 
         ///// 1ゲーム内で値が変化する変数達 /////
         /** 現在のプレイヤーのインデックス */
@@ -160,14 +162,17 @@ class Mahjong {
 
     /** 
      * 半荘を開始する  
+     * @param {Array} active_rules  [], ["washizu"], ["futureview"], ["washizu", futureview]
      * @next startOneGame
      */
-    startGame() {
+    startGame(active_rules) {
         // 既にゲームがスタートしている時はreturnする
         if (this.state == this.GAME_STATE.PLAYING) {
             // 現在はDebug用に強制的に次のゲームをスタートする  FIXME
             // return;
         }
+        // 競合するルールがあればここでそれを解決する
+        this.custom_rule = [...active_rules];
 
         // プレイヤーが4人揃っていなければCPUを追加する
         for (var i = 0; this.players.length < 4; i++){
@@ -187,6 +192,11 @@ class Mahjong {
         this.round_count = 0;   // 1局
         this.honba_count = 0;   // 0本場
         this.state = this.GAME_STATE.PLAYING;
+
+        // プレイヤーのポイントを初期化する
+        this.players.forEach(player => {
+            player.setPoint(25000);
+        });
 
         // ゲームスタートの状態を全ユーザに共有する
         this.sendGameStartMsg();
@@ -265,7 +275,7 @@ class Mahjong {
         // 山を作る
         this.tiles = [...Array(this.all_tile_num)].map((_, i) => i);
         utils.shuffleArray(this.tiles);
-        this.tiles = debug.createTenhoTiles();
+        // this.tiles = debug.createTenhoTiles();
         // this.tiles = debug.createAllRiichiTiles();
         console.log(this.tiles);
         // 配牌
@@ -1128,6 +1138,7 @@ class Mahjong {
             var odx = (i + 2) % 4;  // 対面
             var ldx = (i + 3) % 4;  // 上家
             this.players[i].sendMsg('game-status', {
+                rule: this.custom_rule, 
                 seat: i,  // 0:起家 
                 names: [
                     this.players[i].getUserName(), 
@@ -1150,6 +1161,24 @@ class Mahjong {
             let ldx = (i + 3) % 4;  // 上家
             let odx = (i + 2) % 4;  // 対面
             let rdx = (i + 1) % 4;  // 下家
+            
+            let leftHands = this.players[ldx].getHands();
+            let oppositeHands = this.players[odx].getHands();
+            let rightHands = this.players[rdx].getHands();
+            if (this.custom_rule.includes("washizu")) {
+                leftHands = leftHands.map(v => (v % 4 != 0)? v: this.secret_id);
+                oppositeHands = oppositeHands.map(v => (v % 4 != 0)? v: this.secret_id);
+                rightHands = rightHands.map(v => (v % 4 != 0)? v: this.secret_id);
+                leftHands.sort((a, b) => a - b);
+                oppositeHands.sort((a, b) => a - b);
+                rightHands.sort((a, b) => a - b);
+            }
+            else {
+                leftHands = leftHands.map(v => this.secret_id);
+                oppositeHands = oppositeHands.map(v => this.secret_id);
+                rightHands = rightHands.map(v => this.secret_id);
+            }
+
             this.players[i].sendMsg('data', {
                 // 自分
                 enable_actions: this.players[i].getEnableActions(), 
@@ -1158,17 +1187,17 @@ class Mahjong {
                 myMeldTiles: {code: 'full', value: this.players[i].getMelds()}, 
                 myRiichiTurn: this.players[i].getRiichiTurn(), 
                 // 上家
-                leftHandTiles: {code: 'full', value: Array(this.players[ldx].getHands().length).fill(this.secret_id)}, 
+                leftHandTiles: {code: 'full', value: leftHands}, 
                 leftDiscardTiles: {code: 'full', value: this.players[ldx].getDiscards()}, 
                 leftMeldTiles: {code: 'full', value: this.players[ldx].getMelds()}, 
                 leftRiichiTurn: this.players[ldx].getRiichiTurn(), 
                 // 対面
-                oppositeHandTiles: {code: 'full', value: Array(this.players[odx].getHands().length).fill(this.secret_id)}, 
+                oppositeHandTiles: {code: 'full', value: oppositeHands}, 
                 oppositeDiscardTiles: {code: 'full', value: this.players[odx].getDiscards()}, 
                 oppositeMeldTiles: {code: 'full', value: this.players[odx].getMelds()},
                 oppositeRiichiTurn: this.players[odx].getRiichiTurn(), 
                 // 下家
-                rightHandTiles: {code: 'full', value: Array(this.players[rdx].getHands().length).fill(this.secret_id)}, 
+                rightHandTiles: {code: 'full', value: rightHands}, 
                 rightDiscardTiles: {code: 'full', value: this.players[rdx].getDiscards()}, 
                 rightMeldTiles: {code: 'full', value: this.players[rdx].getMelds()},
                 rightRiichiTurn: this.players[rdx].getRiichiTurn(), 
@@ -1189,12 +1218,23 @@ class Mahjong {
     sendDrawMsg(draw_player, draw_tile, is_replacement_draw = false, send_player_idx = null) {
         for(var i = 0; i < 4; i++){
             if (send_player_idx != null && send_player_idx != i) continue;
+
+            let tile = (draw_player == i)? draw_tile: this.secret_id; 
+            if (this.custom_rule.includes("washizu")) {
+                if (draw_tile % 4 != 0) tile = draw_tile;
+            }
+            let opt = null;
+            if (this.custom_rule.includes("futureview") && i == draw_player && this.tiles.length >= 4) {
+                opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
+            } 
+
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (draw_player - i + 4) % 4,  // player iから見てどこか 
                 action: (is_replacement_draw)? 'replacement-draw': 'draw', 
-                tile: (draw_player == i)? draw_tile: this.secret_id, 
+                tile: tile, 
                 remain_tile_num: this.tiles.length,
+                opt: opt,
             });
         }
     }
@@ -1232,11 +1272,18 @@ class Mahjong {
     sendMeldMsg(action_player, action_type, meld_info, send_player_idx = null) {
         for(var i = 0; i < 4; i++){
             if (send_player_idx != null && send_player_idx != i) continue;
+
+            let opt = null;
+            if (this.custom_rule.includes("futureview") && i == action_player && this.tiles.length >= 4) {
+                opt = {"next_tsumo": this.tiles[this.tiles.length - 4]};
+            } 
+
             this.players[i].sendMsg('diff-data', {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (action_player - i + 4) % 4,  // player iから見てどこか 
                 action: action_type, 
                 meld: meld_info, 
+                opt: opt,
             });
         }      
     }

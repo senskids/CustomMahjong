@@ -13,6 +13,13 @@ key2fname_map[4 * 22 + 0] = './pic/s0.png';
 // 0: 自分, 1: 下家, 2: 対面, 3: 上家
 const idx2player_map = ['my', 'right', 'opposite', 'left'];
 
+// ゲームルール
+const gameRuleList = ["washizu", "futureview"];
+const gameRuleBtns = {};
+gameRuleList.forEach(rule => {
+   gameRuleBtns[rule] = document.getElementById(`${rule}-btn`);
+});
+
 // ゲーム画面の要素を取得
 const gameEl = document.querySelector('#field');
 const gameStartBtn = document.querySelector('#game-start-btn');
@@ -52,7 +59,7 @@ const resultView = {
     "yaku":document.getElementById('result-yaku-area'),
     "score":document.getElementById('result-score-area'),
 }
-const handTileSizes = [100, 30, 30, 30];
+const handTileSizes = [90, 30, 30, 30];
 const discardTileSizes = [60, 60, 60, 60];
 const meldTileSizes = [60, 40, 40, 40];
 
@@ -92,8 +99,11 @@ let lastCommands = [null, null, null, null];  // 各プレイヤーの直前の�
  */
 function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickListener){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
+    let isWashizu = gameRuleBtns["washizu"].checked;
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
+        // 鷲巣麻雀
+        if (isWashizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
         let style = `width: ${imgWidth}px;`;
@@ -129,11 +139,14 @@ function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickList
  */
 function renderDiscardTiles(el, tiles, imgWidth, riichiTurnIdx = null) {
     while(el.firstChild) el.removeChild(el.firstChild);  
+    let isWashizu = gameRuleBtns["washizu"].checked;
     // 描画
     tiles.forEach((tile, idx) => {
         const tileEl = document.createElement('img');
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
+        // 鷲巣麻雀
+        if (isWashizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
         if (idx != riichiTurnIdx){
             tileEl.style = `width: ${imgWidth}px; transform: translate(0)`;
             el.appendChild(tileEl);
@@ -168,6 +181,8 @@ function renderMeldTiles(el, tiles, imgWidth){
     const ROT1 = W4 - W30;
     const ROT2 = ROT1 + W2;
 
+    let isWashizu = gameRuleBtns["washizu"].checked;
+
     tiles.forEach((meld, _) => {
         let renderTiles = [];
         let renderOpts = [];
@@ -196,6 +211,8 @@ function renderMeldTiles(el, tiles, imgWidth){
         for (let i = 0; i < renderTiles.length; i++) {
             const tileEl = document.createElement('img');
             tileEl.src = key2fname_map[renderTiles[i]];
+            // 鷲巣麻雀
+            if (isWashizu && renderTiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
             if (renderOpts[i] == 0) {      // 通常の手出し牌
                 tileEl.style = `width: ${W1}px; transform: translate(${X}px);`;
                 X -= W10;
@@ -217,8 +234,12 @@ function renderMeldTiles(el, tiles, imgWidth){
 renderDoraTiles = function(el, tiles, img_width){
     const backcard_id = key2fname_map.length - 1;
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
-    for (var i = 0; i < 5; i++){  // ドラ表示が5枚になるようにする
+    let isWashizu = gameRuleBtns["washizu"].checked;
+    const iMax = isWashizu? tiles.length: 5;
+    for (var i = 0; i < iMax; i++){  // ドラ表示が5枚になるようにする
         const tileEl = document.createElement('img');
+        // 鷲巣麻雀
+        if (isWashizu && tiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.classList.add('hand-tile');
         tileEl.src = key2fname_map[(i < tiles.length)? tiles[i] : backcard_id];
         tileEl.style = `width: ${img_width};`;
@@ -278,6 +299,12 @@ socket.on('diff-data', (data) => {
         tileNum.textContent = data.remain_tile_num;  // 残り牌数を更新する
         lastCommands[p] = 'draw';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], true, null, p == 0);
+        if (data.opt != null && data.opt.next_tsumo != null) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[data.opt.next_tsumo];
+            imgEl.style = `width: ${handTileSizes[0] - 20}px; margin-left: 20px; opacity: 0.7;`;
+            handEls[p].append(imgEl);
+        }
         return;
     }
     // 捨て牌
@@ -329,6 +356,12 @@ socket.on('diff-data', (data) => {
         renderHandTiles(handEls[p1], handTiles[p1], handTileSizes[p1], false, null, p1 == 0);
         renderMeldTiles(meldEls[p1], meldTiles[p1], meldTileSizes[p1]);
         renderDiscardTiles(discardEls[p2], discardTiles[p2], discardTileSizes[p2], riichiTurns[p2]);
+        if (data.opt != null && data.opt.next_tsumo != null) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[data.opt.next_tsumo];
+            imgEl.style = `width: ${handTileSizes[0] - 20}px; margin-left: 20px; opacity: 0.7;`;
+            handEls[p1].append(imgEl);
+        }
         return;
     }
     // 自分からカン
@@ -361,6 +394,7 @@ socket.on('diff-data', (data) => {
         lastCommands[p] = 'mykan';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], false, null, p == 0);
         renderMeldTiles(meldEls[p], meldTiles[p], meldTileSizes[p]);
+        if (data.opt != null) console.log("a", data.opt.next_tsumo);
         return;
     }
 });
@@ -379,14 +413,40 @@ socket.on('declare', (data) => {
 
 
 socket.on('select-meld-cand', (data) => {
-    if (data.length == 1)
+    if (data.length == 1) 
         socket.emit('select-meld-cand', data[0]);
-    else{
-        console.log("select-meld-cand", data);
-        // FIXME 鳴ける組み合わせを表示して、選択できるようにする
-        socket.emit('select-meld-cand', data[1]);
-    }
+    else
+        showCandidate(data);
 });
+
+// 鳴きの候補を表示する
+function showCandidate(arrs) {
+    // action areaを非表示にする
+    const actionArea = document.getElementById("action-area");
+    actionArea.style.display = "none";
+    // meld-cand-areaに牌を表示する
+    const parent = document.getElementById("meld-cand-area2");
+    for (var i = 0; i < arrs.length; i++) {
+        const divEl = document.createElement('div');
+        divEl.classList.add("cand");
+        for (var j = 0; j < arrs[i].length; j++) {
+            const imgEl = document.createElement('img');
+            imgEl.src = key2fname_map[arrs[i][j]];
+            imgEl.style = `width: ${discardTileSizes[0]}px;`;
+            divEl.append(imgEl)
+        }
+        let tgt = arrs[i].map(v=>v);  // 下の関数で参照するためにコピー
+        divEl.addEventListener('click', () => {
+            // meld-candがクリックされたらサーバーに送信してaction areaを表示する
+            socket.emit('select-meld-cand', tgt);
+            const parent = document.getElementById("meld-cand-area2");
+            while(parent.firstChild) parent.removeChild(parent.firstChild);  
+            const actionArea = document.getElementById("action-area");
+            actionArea.style.display = "flex";
+        });
+        parent.appendChild(divEl);
+    }
+}
 
 
 socket.on('select-kan-cand', (data) => {
@@ -482,6 +542,9 @@ socket.on('point', (points) => {
 
 
 socket.on('game-status', (data) => {
+    for (let i = 0; i < gameRuleList.length; i++) 
+        gameRuleBtns[gameRuleList[i]].checked = data.includes(gameRuleList[i]);
+
     // data.seat : 起家は誰か（fixme : 誰が本局の親（東）かに変える）
     data.names.forEach((e, i)=>{
         playerInfoEls[i]["name"].innerHTML = e;
@@ -495,7 +558,8 @@ socket.on('game-status', (data) => {
 
 // ゲームスタートボタンが押された時の処理
 gameStartBtn.addEventListener('click', (event) => {
-    socket.emit('start-game');
+    let activeGameRule = gameRuleList.filter(v => gameRuleBtns[v].checked);
+    socket.emit('start-game', activeGameRule);
     music.play();
     music.loop = true;
 });

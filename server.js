@@ -1,4 +1,5 @@
 const express = require('express');
+const favicon = require('serve-favicon');
 const http = require('http');
 const socketio = require('socket.io');
 const path = require('path');
@@ -29,6 +30,7 @@ app.get('/game.html', (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(favicon(path.join(__dirname, 'public', 'pic', 'favicon.ico')));
 
 // クライアントとの接続
 io.on('connection', (socket) => {

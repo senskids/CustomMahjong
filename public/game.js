@@ -80,6 +80,7 @@ update_actions = function(enable_action){
     });
 }
 
+
 // 手牌、捨牌、鳴牌の配列（0:自分, 1:下家, 2:対面, 3:上家）
 let handTiles = [[], [], [], []];
 let discardTiles = [[], [], [], []];
@@ -543,7 +544,7 @@ socket.on('point', (points) => {
 
 socket.on('game-status', (data) => {
     for (let i = 0; i < gameRuleList.length; i++) 
-        gameRuleBtns[gameRuleList[i]].checked = data.includes(gameRuleList[i]);
+        gameRuleBtns[gameRuleList[i]].checked = (data.rule).includes(gameRuleList[i]);
 
     // data.seat : 起家は誰か（fixme : 誰が本局の親（東）かに変える）
     data.names.forEach((e, i)=>{
@@ -601,8 +602,90 @@ socket.on('login-failure', (data) => {
 });
 
 
+/**
+ * 1枚の画像（Blob）を分割して、それぞれの牌画像のパスに割り当てる
+ * @param {Blob} img 
+ */
+function changeTileViewFromImgBlob(img) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    NX = 10;
+    NY = 4;
+    canvas.width = img.width / NX;
+    canvas.height = img.height / NY;
+    for (var x = 0; x < NX; x++) {
+        for (var y = 0; y < NY; y++) {
+            if (y == 3 && x >= 8) continue;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, canvas.width * x, canvas.height * y, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+            var url = canvas.toDataURL();
+            if (x == 7 && y == 3) key2fname_map[136] = url;  // 背景
+            else if (x == 9) {
+                key2fname_map[y * 36 + 5 * 4 + 0] = url;  // 赤ドラ 
+                if (y == 1) key2fname_map[y * 36 + 5 * 4 + 1] = url;  // 筒子は赤ドラ2個
+            }
+            else {
+                for (var k = 0; k < 4; k++) key2fname_map[y * 36 + x * 4 + k] = url;    
+            }
+        }
+    }
+    // サイズや余白を変更する
+    handTileSizes[0] = 100;
+    discardTileSizes[0] = 70;
+    meldTileSizes[0] = 70;
+    for (var j = 1; j < 4; j++) {
+        handTileSizes[j] = 40;
+        discardTileSizes[j] = 70;
+        meldTileSizes[j] = 40;
+    }
+}
+
+
+/**
+ * 画像ファイル入力から牌画像を変更する
+ * @param {Blob} event
+ */
+function changeTileViewFromFile(event) {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            changeTileViewFromImgBlob(img);
+        };
+        img.src = e.target.result;
+        localStorage.setItem('girlmasImg', e.target.result);
+    };
+    reader.readAsDataURL(file);
+}
+
+
+/**
+ * ローカルストレージから牌画像を変更する
+ */
+function changeTileImagesFromLocalStorage() {
+    const savedImageData = localStorage.getItem('girlmasImg');
+    if (savedImageData) {
+        const img = new Image();
+        img.onload = function() {
+            changeTileViewFromImgBlob(img);
+        };
+        img.src = savedImageData;
+    }
+}
+
+
+/**
+ * ローカルストレージから牌画像を削除する
+ */
+function resetTileView() {
+    localStorage.clear();
+}
+
+
 // 初期化処理
 function init() {
+    changeTileImagesFromLocalStorage();
 }
 
 

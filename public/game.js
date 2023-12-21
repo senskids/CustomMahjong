@@ -34,7 +34,7 @@ actions.forEach(action => {
         console.log(action);
         if(action === "riichi"){
             //すべてのイベントリスナーを除去
-            renderHandTiles(handEls[0], handTiles[0], handTileSizes[0], true, null, false);
+            renderHandTiles(handEls[0], handTiles[0], handTileSizes[0], handTileOverlapSizes[0], true, null, false);
         }
         socket.emit('declare-action', action);
     });    
@@ -60,8 +60,13 @@ const resultView = {
     "score":document.getElementById('result-score-area'),
 }
 const handTileSizes = [90, 30, 30, 30];
+const handTileOverlapSizes = [0, 0, 0, 0];
 const discardTileSizes = [60, 60, 60, 60];
+const discardTileOverlapSizes = [0, 0, 0, 0];
 const meldTileSizes = [60, 40, 40, 40];
+const meldTileOverlapSizes = [0, 0, 0, 0];
+const doraTileSize = 60;
+
 
 // Socket.IOのインスタンスを作成
 const socket = io();
@@ -94,11 +99,12 @@ let lastCommands = [null, null, null, null];  // 各プレイヤーの直前の�
  * @param {Element} el                描画するhtmlエレメント
  * @param {Array} tiles               描画する手牌（タイルID表現）
  * @param {Number} imgWidth           手牌の描画サイズ（imgWidth[px]）
+ * @param {Number} imgOverlap         手牌間の重なり（imgOverlap[px]）
  * @param {Boolean} isDrawSpace       ツモ表現（最後の牌の前に少し空間を設ける）を適用するか否か
  * @param {Number} spaceIdx           spaceIdx番目の前に1牌分スペースを開ける。開けない場合null（間隔を開けた後0.3秒後にrenderしなおす）
  * @param {Boolean} isClickListener   手牌クリック時にdiscard-tileイベントを送信するか
  */
-function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickListener){
+function renderHandTiles(el, tiles, imgWidth, imgOverlap, isDrawSpace, spaceIdx, isClickListener){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     let isWashizu = gameRuleBtns["washizu"].checked;
     tiles.forEach((tile, idx) => {
@@ -107,7 +113,10 @@ function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickList
         if (isWashizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.src = key2fname_map[tile];
         tileEl.alt = tile;
-        let style = `width: ${imgWidth}px;`;
+        let style = `width: ${imgWidth}px; margin-left:${imgOverlap}px;`;
+        if (idx == 0 || imgOverlap == 0) 
+            style = `width: ${imgWidth}px;`;
+
         // 下記2個のifが両方同時にtrueになることはない（ツモ切りのspaceIdxはtile.length）
         // ツモ牌の場合、手牌と少し空間をあける
         if (isDrawSpace && (idx == tiles.length - 1)) {
@@ -115,10 +124,10 @@ function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickList
         }
         // 牌を切った場合、切った牌の場所に空間をあける。0.3秒後に手牌をソートして再レンダリングする
         if (idx === spaceIdx) {
-            style += style + ` margin-left: ${imgWidth}px;`;
+            style += style + ` margin-left: ${imgWidth + 2 * imgOverlap}px;`;
             window.setTimeout(()=>{ 
                 tiles.sort((a, b) => a - b);
-                renderHandTiles(el, tiles, imgWidth, false, null, false);
+                renderHandTiles(el, tiles, imgWidth, imgOverlap, false, null, false);
             }, 300);
         }
         tileEl.style = style;
@@ -136,9 +145,10 @@ function renderHandTiles(el, tiles, imgWidth, isDrawSpace, spaceIdx, isClickList
  * @param {Element} el            描画するhtmlエレメント
  * @param {Array} tiles           描画する捨牌（タイルID表現）
  * @param {Number} imgWidth       捨牌の描画サイズ（imgWidth[px]）
+ * @param {Number} imgOverlap     捨牌間の重なるサイズ（imgOverlap[px]）
  * @param {Number} riichiTurnIdx  立直宣言牌のindex。立直宣言していない場合null
  */
-function renderDiscardTiles(el, tiles, imgWidth, riichiTurnIdx = null) {
+function renderDiscardTiles(el, tiles, imgWidth, imgOverlap, riichiTurnIdx = null) {
     while(el.firstChild) el.removeChild(el.firstChild);  
     let isWashizu = gameRuleBtns["washizu"].checked;
     // 描画
@@ -149,14 +159,17 @@ function renderDiscardTiles(el, tiles, imgWidth, riichiTurnIdx = null) {
         // 鷲巣麻雀
         if (isWashizu && tile % 4 != 0) tileEl.classList.add("opacity-tile");
         if (idx != riichiTurnIdx){
-            tileEl.style = `width: ${imgWidth}px; transform: translate(0)`;
+            if (idx != 0) 
+                tileEl.style = `width: ${imgWidth}px; margin-left: ${imgOverlap}px; transform: translate(0)`;
+            else
+                tileEl.style = `width: ${imgWidth}px; transform: translate(0)`;
             el.appendChild(tileEl);
         }
         else {
             const H = parseInt(imgWidth * (tileEl.height / tileEl.width));
             const L = parseInt((H - imgWidth) / 2);
             const divEl = document.createElement('div');
-            divEl.style = `display: inline-block; width: ${H - L}px; `;
+            divEl.style = `display: inline-block; width: ${H - L}px; margin-left: ${imgOverlap}px;`;
             tileEl.style = `width: ${imgWidth}px; margin-left: ${L}px; transform:rotate(90deg);`;
             divEl.append(tileEl);
             el.appendChild(divEl);
@@ -168,8 +181,9 @@ function renderDiscardTiles(el, tiles, imgWidth, riichiTurnIdx = null) {
  * @param {Element} el            描画するhtmlエレメント
  * @param {Array} tiles           描画する公開面子（meld表現）
  * @param {Number} imgWidth       牌の描画サイズ（imgWidth[px]）
+ * @param {Number} imgOverlap     牌間の重なりサイズ（imgOverlap[px]）
  */
-function renderMeldTiles(el, tiles, imgWidth){
+function renderMeldTiles(el, tiles, imgWidth, imgOverlap){
     while(el.firstChild) el.removeChild(el.firstChild);  // 全要素を一旦削除
     let X = 0;  // 描画する牌の左端の補正座標(px)
     const W1 = imgWidth;  
@@ -215,17 +229,17 @@ function renderMeldTiles(el, tiles, imgWidth){
             // 鷲巣麻雀
             if (isWashizu && renderTiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
             if (renderOpts[i] == 0) {      // 通常の手出し牌
-                tileEl.style = `width: ${W1}px; transform: translate(${X}px);`;
+                tileEl.style = `width: ${W1}px; transform: translate(${X}px); margin-left: ${imgOverlap}px;`;
                 X -= W10;
             }
             else if (renderOpts[i] == 1){  // 鳴き牌
                 X += W4;
-                tileEl.style = `width: ${W1}px; transform: rotate(90deg) translate(${ROT1}px, ${-X}px);`;
+                tileEl.style = `width: ${W1}px; transform: rotate(90deg) translate(${ROT1}px, ${-X}px); margin-left: ${imgOverlap}px;`;
                 X -= SP;
             }
             else {  // 加槓牌
                 X -= (W1 - SP);
-                tileEl.style = `width: ${W1}px; transform: rotate(90deg) translate(${-ROT2}px, ${-X}px);`;
+                tileEl.style = `width: ${W1}px; transform: rotate(90deg) translate(${-ROT2}px, ${-X}px); margin-left: ${imgOverlap}px;`;
             }
             el.appendChild(tileEl);
         }
@@ -243,7 +257,7 @@ renderDoraTiles = function(el, tiles, img_width){
         if (isWashizu && tiles[i] % 4 != 0) tileEl.classList.add("opacity-tile");
         tileEl.classList.add('hand-tile');
         tileEl.src = key2fname_map[(i < tiles.length)? tiles[i] : backcard_id];
-        tileEl.style = `width: ${img_width};`;
+        tileEl.style = `width: ${img_width}px;`;
         el.appendChild(tileEl);
     }
 }
@@ -273,11 +287,11 @@ socket.on('data', (data) => {
 
     // 牌を描画する
     for(var i = 0; i < 4; i++){
-        renderHandTiles(handEls[i], handTiles[i], handTileSizes[i], false, null, i == 0);
-        renderDiscardTiles(discardEls[i], discardTiles[i], discardTileSizes[i], riichiTurns[i]);
-        renderMeldTiles(meldEls[i], meldTiles[i], meldTileSizes[i]);
+        renderHandTiles(handEls[i], handTiles[i], handTileSizes[i], handTileOverlapSizes[i], false, null, i == 0);
+        renderDiscardTiles(discardEls[i], discardTiles[i], discardTileSizes[i], discardTileOverlapSizes[i], riichiTurns[i]);
+        renderMeldTiles(meldEls[i], meldTiles[i], meldTileSizes[i], meldTileOverlapSizes[i]);
     }
-    renderDoraTiles(doraEl, doraTiles, "60px");
+    renderDoraTiles(doraEl, doraTiles, doraTileSize);
 });
 
 
@@ -290,7 +304,7 @@ socket.on('diff-data', (data) => {
     // ドラ更新
     if (data.action == 'dora'){
         doraTiles.push(data.tile);
-        renderDoraTiles(doraEl, doraTiles, "60px");
+        renderDoraTiles(doraEl, doraTiles, doraTileSize);
         return;
     }
     // ツモ
@@ -299,7 +313,7 @@ socket.on('diff-data', (data) => {
         handTiles[p].push(data.tile);
         tileNum.textContent = data.remain_tile_num;  // 残り牌数を更新する
         lastCommands[p] = 'draw';
-        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], true, null, p == 0);
+        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], handTileOverlapSizes[p], true, null, p == 0);
         if (data.opt != null && data.opt.next_tsumo != null) {
             const imgEl = document.createElement('img');
             imgEl.src = key2fname_map[data.opt.next_tsumo];
@@ -329,8 +343,8 @@ socket.on('diff-data', (data) => {
         discardTiles[p].push(data.tile);
         const isDraw = (lastCommands[p] == 'draw') && !data.is_tsumo_giri;
         lastCommands[p] = 'discard';
-        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], isDraw, discardIdx, p == 0);
-        renderDiscardTiles(discardEls[p], discardTiles[p], discardTileSizes[p], riichiTurns[p]);
+        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], handTileOverlapSizes[p], isDraw, discardIdx, p == 0);
+        renderDiscardTiles(discardEls[p], discardTiles[p], discardTileSizes[p], discardTileOverlapSizes[p], riichiTurns[p]);
         return;
     }
     // 他家から鳴き
@@ -354,9 +368,9 @@ socket.on('diff-data', (data) => {
         });
         meldTiles[p1].push({'type': data.action, 'from_who': p2, 'discard': meld_info.discard, 'hands': meld_info.hands});
         lastCommands[p1] = 'meld';
-        renderHandTiles(handEls[p1], handTiles[p1], handTileSizes[p1], false, null, p1 == 0);
-        renderMeldTiles(meldEls[p1], meldTiles[p1], meldTileSizes[p1]);
-        renderDiscardTiles(discardEls[p2], discardTiles[p2], discardTileSizes[p2], riichiTurns[p2]);
+        renderHandTiles(handEls[p1], handTiles[p1], handTileSizes[p1], handTileOverlapSizes[p1], false, null, p1 == 0);
+        renderMeldTiles(meldEls[p1], meldTiles[p1], meldTileSizes[p1], meldTileOverlapSizes[p1]);
+        renderDiscardTiles(discardEls[p2], discardTiles[p2], discardTileSizes[p2], discardTileOverlapSizes[p2], riichiTurns[p2]);
         if (data.opt != null && data.opt.next_tsumo != null) {
             const imgEl = document.createElement('img');
             imgEl.src = key2fname_map[data.opt.next_tsumo];
@@ -393,8 +407,8 @@ socket.on('diff-data', (data) => {
             }
         }        
         lastCommands[p] = 'mykan';
-        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], false, null, p == 0);
-        renderMeldTiles(meldEls[p], meldTiles[p], meldTileSizes[p]);
+        renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], handTileOverlapSizes[p], false, null, p == 0);
+        renderMeldTiles(meldEls[p], meldTiles[p], meldTileSizes[p], meldTileOverlapSizes[p]);
         if (data.opt != null) console.log("a", data.opt.next_tsumo);
         return;
     }
@@ -496,8 +510,8 @@ socket.on('one-game-end', (results) => {
 
             if (["ron", "tsumo"].includes(result.type)){
                 result.hands.push((result.type == "tsumo")? result.tsumo: result.discard);
-                renderHandTiles(resultView["hands"], result.hands, 60, true, null, false);
-                renderMeldTiles(resultView["melds"], meldTiles[result.winp], "60px");
+                renderHandTiles(resultView["hands"], result.hands, 60, 0, true, null, false);
+                renderMeldTiles(resultView["melds"], meldTiles[result.winp], "60px", "-20px");
                 resultView["yaku"].innerHTML = "";
                 for (var j = 0; j < result.hule.hupai.length; j++) resultView["yaku"].innerHTML += `<p>${result.hule.hupai[j].name}</p>`;
                 resultView["score"].innerHTML = result.hule.defen;
@@ -510,7 +524,7 @@ socket.on('one-game-end', (results) => {
                     let player = result.tenpais[j].player;
                     let hands = result.tenpais[j].hands;
                     if (player != 0) 
-                        renderHandTiles(handEls[player], hands, 30, false, null, false);
+                        renderHandTiles(handEls[player], hands, 30, handTileOverlapSizes[1] / 2, false, null, false);
                 }        
             }
             else if ("drawn-mangan") {
@@ -630,13 +644,19 @@ function changeTileViewFromImgBlob(img) {
         }
     }
     // サイズや余白を変更する
-    handTileSizes[0] = 100;
+    handTileSizes[0] = 120;
+    handTileOverlapSizes[0] = -30;
     discardTileSizes[0] = 70;
+    discardTileOverlapSizes[0] = -20;
     meldTileSizes[0] = 70;
+    meldTileOverlapSizes[0] = -20;
     for (var j = 1; j < 4; j++) {
+        handTileOverlapSizes[j] = -20;
         handTileSizes[j] = 40;
         discardTileSizes[j] = 70;
+        discardTileOverlapSizes[j] = -20;
         meldTileSizes[j] = 40;
+        meldTileOverlapSizes[j] = -20;
     }
 }
 

@@ -183,7 +183,19 @@
                         <input type="checkbox" id="futureview-btn"/>
                         <label for="futureview-btn">未来視ルール</label>
                     </div>                
-                </div>                
+                </div>     
+                <div style="margin-top: 30%;"></div>
+                
+                <div class="standard-menu-area">
+                    <div class="menu-item">
+                        <input id="customTile" type="file" onchange="changeTileViewFromFile(event)"/>
+                        <label for="customTile">牌を変更</label>
+                    </div>
+                    <div class="menu-item">
+                        <label onclick="resetTileView()">デフォルトに戻す</label>
+                    </div>                
+                </div>
+
             </div>
         </div>
 

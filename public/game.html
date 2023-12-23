@@ -18,107 +18,123 @@
 
         <div class="main-container">
             <div id="game-board">
-                <div id="my-main-area">
-                    <div class="my">
-                        <div class="player-info-area">
-                            <div class="player-info">
-                                <div class="player-status">
-                                    <div id="my-wind" class="player-wind">東</div>
-                                    <div id="my-point" class="player-point">25000</div>
+                <div class="my main-area">
+                    <div>
+                        <div>
+                            <div class="player-info-area">
+                                <div class="player-info">
+                                    <div class="player-status">
+                                        <div id="my-wind" class="player-wind">東</div>
+                                        <div id="my-point" class="player-point">25000</div>
+                                    </div>
+                                    <div id="my-name" class="player-name"></div>
                                 </div>
-                                <div id="my-name" class="player-name">あああ</div>
                             </div>
-                        </div>
-                        <div style="display:flex">
-                            <div id="my-hand-tiles">あああ</div>
-                            <div id="my-meld-tiles" class="meld-area">いいい</div>
+                            <div class="player-tiles-container">
+                                <div id="my-hand-tiles"></div>
+                                <div id="my-meld-tiles" class="meld-area"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div id="right-main-area">
-                    <div class="right">
-                        <div class="player-info-area">
-                            <div class="player-info">
-                                <div class="player-status">
-                                    <div id="right-wind" class="player-wind">南</div>
-                                    <div id="right-point" class="player-point">25000</div>
+                <div class="right main-area">
+                    <div>
+                        <div>
+                            <div class="player-info-area">
+                                <div class="player-info">
+                                    <div class="player-status">
+                                        <div id="right-wind" class="player-wind">南</div>
+                                        <div id="right-point" class="player-point">25000</div>
+                                    </div>
+                                    <div id="right-name" class="player-name"></div>
                                 </div>
-                                <div id="right-name" class="player-name">あああ</div>
                             </div>
-                        </div>
-                        <div style="display:flex">
-                            <div id="right-hand-tiles">aaa</div>
-                            <div id="right-meld-tiles" class="meld-area">iii</div>
+                            <div class="player-tiles-container">
+                                <div id="right-hand-tiles"></div>
+                                <div id="right-meld-tiles" class="meld-area"></div>
+                            </div>
+                        </div>                        
+                    </div>                        
+                </div>
+                <div class="opposite main-area">
+                    <div>
+                        <div>
+                            <div class="player-info-area">
+                                <div class="player-info">
+                                    <div class="player-status">
+                                        <div id="opposite-wind" class="player-wind">西</div>
+                                        <div id="opposite-point" class="player-point">25000</div>
+                                    </div>
+                                    <div id="opposite-name" class="player-name"></div>
+                                    
+                                </div>
+                            </div>
+                            <div class="player-tiles-container">
+                                <div id="opposite-hand-tiles"></div>
+                                <div id="opposite-meld-tiles" class="meld-area"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div id="opposite-main-area">
-                    <div class="opposite">
-                        <div class="player-info-area">
-                            <div class="player-info">
-                                <div class="player-status">
-                                    <div id="opposite-wind" class="player-wind">西</div>
-                                    <div id="opposite-point" class="player-point">25000</div>
+                <div class="left main-area">
+                    <div>
+                        <div>
+                            <div class="player-info-area">
+                                <div class="player-info">
+                                    <div class="player-status">
+                                        <div id="left-wind" class="player-wind">北</div>
+                                        <div id="left-point" class="player-point">25000</div>
+                                    </div>
+                                    <div id="left-name" class="player-name"></div>
+                                    
                                 </div>
-                                <div id="opposite-name" class="player-name">あああ</div>
-                                
                             </div>
-                        </div>
-                        <div style="display:flex">
-                            <div id="opposite-hand-tiles">aaaa</div>
-                            <div id="opposite-meld-tiles" class="meld-area">iii</div>
-                        </div>
-                    </div>
-                </div>
-                <div id="left-main-area">
-                    <div class="left">
-                        <div class="player-info-area">
-                            <div class="player-info">
-                                <div class="player-status">
-                                    <div id="left-wind" class="player-wind">北</div>
-                                    <div id="left-point" class="player-point">25000</div>
-                                </div>
-                                <div id="left-name" class="player-name">あああ</div>
-                                
+                            <div class="player-tiles-container">
+                                <div id="left-hand-tiles"></div>
+                                <div id="left-meld-tiles" class="meld-area"></div>
                             </div>
-                        </div>
-                        <div style="display:flex">
-                            <div id="left-hand-tiles">uuu</div>
-                            <div id="left-meld-tiles" class="meld-area">eee</div>
                         </div>
                     </div>
                 </div>
 
-                <div id="my-discard-area">
-                    <div class="my">
-                        <div class="declare-window">
-                            <label id="my-declare-msg" class="declare-msg"></label>
+                <div class="my discard-area">
+                    <div>
+                        <div>
+                            <div class="declare-window">
+                                <label id="my-declare-msg" class="declare-msg"></label>
+                            </div>
+                            <div id="my-discard-tiles"></div>
                         </div>
-                        <div id="my-discard-tiles">aaa</div>
                     </div>
                 </div>
-                <div id="right-discard-area">
-                    <div class="right">
-                        <div class="declare-window">
-                            <label id="right-declare-msg" class="declare-msg"></label>
+                <div class="right discard-area">
+                    <div>
+                        <div>
+                            <div class="declare-window">
+                                <label id="right-declare-msg" class="declare-msg"></label>
+                            </div>
+                            <div id="right-discard-tiles"></div>
                         </div>
-                        <div id="right-discard-tiles">aaaa</div>
                     </div>
                 </div>
-                <div id="opposite-discard-area">
-                    <div class="opposite">
-                        <div class="declare-window">
-                            <label id="opposite-declare-msg" class="declare-msg"></label>
+                <div class="opposite discard-area">
+                    <div>
+                        <div>
+                            <div class="declare-window">
+                                <label id="opposite-declare-msg" class="declare-msg"></label>
+                            </div>
+                            <div id="opposite-discard-tiles"></div>
                         </div>
-                        <div id="opposite-discard-tiles">aaa</div>
                     </div>
                 </div>
-                <div id="left-discard-area">
-                    <div class="left">
-                        <div class="declare-window">
-                            <label id="left-declare-msg" class="declare-msg"></label>
+                <div class="left discard-area">
+                    <div>
+                        <div>
+                            <div class="declare-window">
+                                <label id="left-declare-msg" class="declare-msg"></label>
+                            </div>
+                            <div id="left-discard-tiles"></div>
                         </div>
-                        <div id="left-discard-tiles">eee</div>
                     </div>
                 </div>
 

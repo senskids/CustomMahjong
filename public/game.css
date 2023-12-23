@@ -45,6 +45,99 @@
     /* margin: auto; */
     background-color: rgba(0, 128, 0, 0.664);
   }
+  #game-board > div {
+    position: absolute;
+  }
+
+  .my.main-area {
+    top: 70%;
+    left: 0%;
+    width: 100%;
+    height: 30%;
+  }
+  .right.main-area {
+    bottom: calc(100% - 0%);
+    right: 0%;  /* left + widtgh */
+    width: calc(70% * (900 / 1500));  /* height / aspect*/
+    height: calc(13% * (1500 / 900));  /* width / aspect*/
+  }
+  .opposite.main-area {
+    top: 0%;
+    left: 13%;
+    width: 74%;
+    height: 14%;
+  }
+  .left.main-area {
+    bottom: calc(100% - 0%);
+    left: 0%;  /* left + widtgh */
+    width: calc(70% * (900 / 1500));  /* height / aspect*/
+    height: calc(13% * (1500 / 900));  /* width / aspect*/
+  }
+  .my.discard-area {
+    top: 50%;
+    left: 30%;
+    width: 40%;
+    height: 20%;
+  }
+  .right.discard-area {
+    bottom: calc(100% - 14%);
+    right: 13%;  /* left + widtgh */
+    width: calc(56% * (900 / 1500));  /* height / aspect*/
+    height: calc(17% * (1500 / 900));  /* width / aspect*/
+  }
+  .opposite.discard-area {
+    top: 14%;
+    left: 30%;
+    width: 40%;
+    height: 20%;
+  }
+  .left.discard-area {
+    bottom: calc(100% - 14%);
+    left: 13%;  /* left + widtgh */
+    width: calc(56% * (900 / 1500));  /* height / aspect*/
+    height: calc(17% * (1500 / 900));  /* width / aspect*/
+  }
+
+  .main-area > div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+  .discard-area > div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }  
+  .right > div {
+    transform: rotate(-90deg);
+    transform-origin: right bottom;
+  }
+  .opposite > div {
+    transform: rotate(180deg);
+  }
+  .left > div {
+    transform: rotate(90deg);
+    transform-origin: left bottom;
+  }
+  .main-area > div > div {
+    margin: 0.5% 0 0 1%;
+    width: 99%;
+  }
+  .discard-area > div > div {
+    margin: 1% 0 0 0;
+    width: 99%;
+  }
+  .main-area.right > div > div {
+    margin: 5% 0 0 1%;
+  }
+  .main-area.left > div > div {
+    margin: 5% 0 0 1%;
+  }
+
+  .player-tiles-container {
+    display: flex;
+  }
+
   .player-info-area{
     background-color: rgba(219, 219, 219, 0.7);
     display: inline-block;
@@ -89,114 +182,11 @@
     /* color: rgb(252, 252, 19); */
   }
 
-  #my-main-area {
-    position: absolute;
-    top: 70%;
-    left: 0%;
-    width: 100%;
-    height: 30%;
-  }
-  
-  #right-main-area {
-    position: absolute;
-    bottom: calc(100% - 0%);
-    right: 0%;  /* left + widtgh */
-    width: calc(70% * (900 / 1500));  /* height / aspect*/
-    height: calc(13% * (1500 / 900));  /* width / aspect*/
-  }
-  
-  #opposite-main-area {
-    position: absolute;
-    top: 0%;
-    left: 13%;
-    width: 74%;
-    height: 14%;
-  }
-  
-  #left-main-area {
-    position: absolute;
-    bottom: calc(100% - 0%);
-    left: 0%;  /* left + widtgh */
-    width: calc(70% * (900 / 1500));  /* height / aspect*/
-    height: calc(13% * (1500 / 900));  /* width / aspect*/
-  }
-
   .meld-area{
     margin-left: auto;
-    margin-right: 2%;
+    margin-right: 5%;
     margin-top: auto;
   }
-
-  #my-discard-area {
-    position: absolute;
-    top: 50%;
-    left: 30%;
-    width: 40%;
-    height: 20%;
-  }
-
-  #right-discard-area {
-    position: absolute;
-    bottom: calc(100% - 14%);
-    right: 13%;  /* left + widtgh */
-    width: calc(56% * (900 / 1500));  /* height / aspect*/
-    height: calc(17% * (1500 / 900));  /* width / aspect*/
-  }
-  
-  #opposite-discard-area {
-    position: absolute;
-    top: 14%;
-    left: 30%;
-    width: 40%;
-    height: 20%;
-  }
-
-  #left-discard-area {
-    position: absolute;
-    bottom: calc(100% - 14%);
-    left: 13%;  /* left + widtgh */
-    width: calc(56% * (900 / 1500));  /* height / aspect*/
-    height: calc(17% * (1500 / 900));  /* width / aspect*/
-  }
-
-  /* コンポーネントを90度回転する */
-  .my{
-    width: 100%;
-    height: 100%;
-    padding: 1rem;
-    /* background-color:#0000ff80; */
-  }
-  .right{
-    width: 100%;
-    height: 100%;
-    padding: 1rem;
-    /* background-color:#00ffff80; */
-    transform: rotate(-90deg);
-    transform-origin: right bottom;
-  }
-  .opposite{
-    width: 100%;
-    height: 100%;
-    padding: 1rem;
-    /* background-color:#ff00ff80; */
-    transform: rotate(180deg);
-  }
-  .left{
-    width: 100%;
-    height: 100%;
-    padding: 1rem;
-    /* background-color:#ffff0080; */
-    transform: rotate(90deg);
-    transform-origin: left bottom;
-  }
-
-  .main-area{
-    display: flex;
-  }
-  .discard-area{
-    display: flex;
-  }
-  
 
   #game-info-area {
     position: absolute;

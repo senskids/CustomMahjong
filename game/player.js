@@ -1,3 +1,4 @@
+const Mahjong = require('./mahjong');
 const utils = require('./utils');
 
 class Player{
@@ -56,7 +57,9 @@ class Player{
         /** 今上がった際の点数 FIXME */
         this.hule_info = undefined;
         /** 持ち時間  FIXME 実装していない */
-        this.allotted_time = 10;
+        this.allotted_time = null;
+        /** 時間管理用の変数 */
+        this.time_start = null;
         /** プレイヤーが現在可能なアクションの辞書 */
         this.enable_actions = {
             discard: false, 
@@ -565,6 +568,17 @@ class Player{
     }
     getTenpai(){
         return this.is_tenpai;
+    }
+    resetStartTime(){
+        this.time_start = Date.now();
+    }
+    updateAllottedTime(){
+        // Data.now()はミリ秒単位
+        console.log("updateAllottedTime", (Date.now() - this.time_start)/1000.0);
+        if( (Date.now() - this.time_start)/1000.0 - this.game_manager.additional_allotted_time > 0) {
+            this.allotted_time -= Math.floor((Date.now() - this.time_start)/1000.0) - this.game_manager.additional_allotted_time;
+        }
+        this.time_start = null;
     }
     /**
      * 点棒をやりとりする

@@ -20,6 +20,68 @@ gameRuleList.forEach(rule => {
    gameRuleBtns[rule] = document.getElementById(`${rule}-btn`);
 });
 
+// 持ち時間を管理、表示する
+const remainTime = document.getElementById("remain-time");
+const additionTime = document.getElementById("addition-time");
+const addition_time_setting = 5;
+let allottedTime = null;
+let addition_time = addition_time_setting;
+// 操作プレイヤーの持ち時間更新用に1秒ごとに呼び出される関数
+function updateTimeRepeat(action){
+    // 1秒まで表示したいため、条件を”>1”にしている
+    console.log("追加時間："+addition_time+", 持ち時間："+allottedTime);
+    if (addition_time > 1) {
+        addition_time--;
+        additionTime.textContent = addition_time;
+        if (allottedTime > 1) {
+            remainTime.textContent = "+"+allottedTime;
+        } else {
+            remainTime.textContent = null;
+        }
+    } else if (allottedTime > 1) {
+        // 追加時間がなくなったときに持ち時間がすぐに減らないようにする
+        if (addition_time == 1) {
+            addition_time--;
+        } else {
+            allottedTime--;
+        }
+        additionTime.textContent = null;
+        remainTime.textContent = allottedTime;
+    } else { // 時間切れ
+        clearInterval(update_time);
+        additionTime.textContent = null;
+        remainTime.textContent = null;
+        if (action == 'draw') { // 引いた時に持ち時間が無くなったらツモ切り
+            socket.emit('discard-tile', handTiles[0][handTiles[0].length - 1]);
+        }
+        else if (action == 'meld-waiting') { // 鳴きの待機状態で時間切れになったらスキップ
+            socket.emit('declare-action', 'skip');
+        }
+        else if (action == 'meld') { // 鳴いてから捨てるまでに時間切れになったらランダムに手牌を捨てる
+            socket.emit('discard-tile', handTiles[0][Math.floor(Math.random() * handTiles[0].length)]);
+        }
+    }
+}
+// プレイヤーの持ち時間を初期化
+let update_time = null;
+update_time = setInterval(() => updateTimeRepeat(0), 0);
+clearInterval(update_time);
+// 操作プレイヤーの場合に持ち時間を更新する関数
+function updateRemainTime(action, allotted_time){
+    clearInterval(update_time);
+    allottedTime = allotted_time;
+    addition_time = addition_time_setting;
+    console.log(", time: "+allottedTime);
+    if (allottedTime > 1) {
+        additionTime.textContent = addition_time;
+        remainTime.textContent = "+"+allottedTime;
+    } else {
+        additionTime.textContent = addition_time;
+        remainTime.textContent = null;
+    }
+    update_time = setInterval(() => updateTimeRepeat(action), 1000);
+}
+
 // ゲーム画面の要素を取得
 const gameEl = document.querySelector('#field');
 const gameStartBtn = document.querySelector('#game-start-btn');
@@ -35,6 +97,15 @@ actions.forEach(action => {
         if(action === "riichi"){
             //すべてのイベントリスナーを除去
             renderHandTiles(handEls[0], handTiles[0], handTileSizes[0], handTileOverlapSizes[0], true, null, false);
+            actions.forEach(action => {
+                actionBtns[action].style = "display: none;"
+            });
+        }
+        // アクションがロン、ツモ、九種九牌、スキップのときはタイマーを止める
+        if (['ron', 'tsumo', 'drawn', 'skip'].includes(action)){
+            clearInterval(update_time);
+            additionTime.textContent = null;
+            remainTime.textContent = null;
         }
         socket.emit('declare-action', action);
     });    
@@ -66,7 +137,6 @@ const discardTileOverlapSizes = [0, 0, 0, 0];
 const meldTileSizes = [60, 40, 40, 40];
 const meldTileOverlapSizes = [0, 0, 0, 0];
 const doraTileSize = 60;
-
 
 // Socket.IOのインスタンスを作成
 const socket = io();
@@ -298,8 +368,15 @@ socket.on('data', (data) => {
 // WebSocketでサーバからのデータを受信する処理
 socket.on('diff-data', (data) => {
     // ゲームの状態を更新する
-    if ("enable_actions" in data)
+    console.log("player:", data.player);
+    console.log("enable_actions:", data.enable_actions);
+    if ("enable_actions" in data){
         update_actions(data.enable_actions);
+        // 鳴きの待機状態
+        if ((data.player != 0) && (data.enable_actions.pon || data.enable_actions.chi || data.enable_actions.kan || data.enable_actions.ron)){
+            updateRemainTime('meld-waiting', data.allotted_time);
+        }
+    }
 
     // ドラ更新
     if (data.action == 'dora'){
@@ -314,6 +391,9 @@ socket.on('diff-data', (data) => {
         tileNum.textContent = data.remain_tile_num;  // 残り牌数を更新する
         lastCommands[p] = 'draw';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], handTileOverlapSizes[p], true, null, p == 0);
+        if (p == 0) { // 操作プレイヤーの場合に持ち時間を表示、更新する
+            updateRemainTime('draw', data.allotted_time);
+        }
         if (data.opt != null && data.opt.next_tsumo != null) {
             const imgEl = document.createElement('img');
             imgEl.src = key2fname_map[data.opt.next_tsumo];
@@ -345,6 +425,11 @@ socket.on('diff-data', (data) => {
         lastCommands[p] = 'discard';
         renderHandTiles(handEls[p], handTiles[p], handTileSizes[p], handTileOverlapSizes[p], isDraw, discardIdx, p == 0);
         renderDiscardTiles(discardEls[p], discardTiles[p], discardTileSizes[p], discardTileOverlapSizes[p], riichiTurns[p]);
+        if (p == 0) { // 操作プレイヤーの場合に持ち時間を更新する
+            clearInterval(update_time);
+            additionTime.textContent = null;
+            remainTime.textContent = null;
+        }
         return;
     }
     // 他家から鳴き
@@ -376,6 +461,9 @@ socket.on('diff-data', (data) => {
             imgEl.src = key2fname_map[data.opt.next_tsumo];
             imgEl.style = `width: ${handTileSizes[0] - 20}px; margin-left: 20px; opacity: 0.7;`;
             handEls[p1].append(imgEl);
+        }
+        if (p1 == 0) { // 操作プレイヤーの場合に持ち時間を更新する
+            updateRemainTime('meld', data.allotted_time);
         }
         return;
     }
@@ -428,9 +516,13 @@ socket.on('declare', (data) => {
 
 
 socket.on('select-meld-cand', (data) => {
-    if (data.length == 1) 
+    if (data.length == 1) {
         socket.emit('select-meld-cand', data[0]);
-    else
+        // 鳴きの候補が1つの時は自動的にタイマーを止める
+        clearInterval(update_time);
+        additionTime.textContent = null;
+        remainTime.textContent = null;
+    } else
         showCandidate(data);
 });
 
@@ -458,6 +550,10 @@ function showCandidate(arrs) {
             while(parent.firstChild) parent.removeChild(parent.firstChild);  
             const actionArea = document.getElementById("action-area");
             actionArea.style.display = "flex";
+            // ボタンを押した時にタイマーを止める
+            clearInterval(update_time);
+            additionTime.textContent = null;
+            remainTime.textContent = null;
         });
         parent.appendChild(divEl);
     }
@@ -465,6 +561,10 @@ function showCandidate(arrs) {
 
 
 socket.on('select-kan-cand', (data) => {
+    // カンが確定した時にタイマーを止める
+    clearInterval(update_time);
+    additionTime.textContent = null;
+    remainTime.textContent = null;
     if (data.length == 1)
         socket.emit('declare-kan', data[0]);
     else{
@@ -475,9 +575,13 @@ socket.on('select-kan-cand', (data) => {
 
 
 socket.on('select-riichi-cand', (data) => {
-    if (data.length == 1)
+    if (data.length == 1) {
+        // ボタンを押した時にタイマーを止める
+        clearInterval(update_time);
+        additionTime.textContent = null;
+        remainTime.textContent = null;
         socket.emit('declare-riichi', data[0]);
-    else{
+    } else{
         // FIXME 捨てられる牌を表示して、選択できるようにする
         imgEls = handEls[0].getElementsByTagName('img');
         for (var i = 0; i < imgEls.length; i++){
@@ -485,6 +589,10 @@ socket.on('select-riichi-cand', (data) => {
                 let v = parseInt(imgEls[i].alt)
                 imgEls[i].addEventListener('click', () => {
                     socket.emit('declare-riichi', v);
+                    // リーチが確定した時にタイマーを止める
+                    clearInterval(update_time);
+                    additionTime.textContent = null;
+                    remainTime.textContent = null;
                 })
             }
         }

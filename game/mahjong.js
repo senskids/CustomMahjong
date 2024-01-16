@@ -31,6 +31,10 @@ class Mahjong {
         this.parent_idx = 0;
         /** カスタムルールの設定 */
         this.custom_rule = [];  // 有効なルールを要素に入れる
+        /** プレイヤーの持ち時間 */
+        this.default_allotted_time = 10;  // 60秒
+        /** 追加の持ち時間 */
+        this.additional_allotted_time = 5;  // 5秒
 
         ///// 1ゲーム内で値が変化する変数達 /////
         /** 現在のプレイヤーのインデックス */
@@ -277,6 +281,8 @@ class Mahjong {
         utils.shuffleArray(this.tiles);
         // this.tiles = debug.createTenhoTiles();
         // this.tiles = debug.createAllRiichiTiles();
+        // this.tiles = debug.createFourKanTiles();
+        // this.tiles = debug.createTwoCandidateTiles();
         console.log(this.tiles);
         // 配牌
         for(var p = 0; p < this.players.length; p++){
@@ -291,6 +297,10 @@ class Mahjong {
         this.uradora = [this.tiles.pop()];
         // カンの初期化
         this.kans = [];
+        // プレイヤーの持ち時間の初期化 
+        this.players.forEach(player => {
+            player.allotted_time = this.default_allotted_time;
+        });
 
         // 全ユーザに状態を送る
         this.sendOneGameAllDataMsg();
@@ -313,6 +323,9 @@ class Mahjong {
 
         // cplayer_idxプレイヤーのツモに対して、各自どんなアクションが可能かをチェックする
         for(var i = 0; i < 4; i++) this.players[i].checkEnableActionsForDrawTile(this.cplayer_idx, draw_tile, this.getFieldInfo());
+
+        // 引いた時の時刻から別のアクションまでの時間を計算する
+        this.players[this.cplayer_idx].resetStartTime();
 
         // 全クライアントに通知
         this.sendDrawMsg(this.cplayer_idx, draw_tile);
@@ -338,6 +351,9 @@ class Mahjong {
         // 何かしら問題があって牌を捨てる行為に失敗した場合はreturn
         if (!actRes) return;
 
+        // 牌を捨てたプレイヤーの経過時間を計算する
+        this.players[p].updateAllottedTime();
+
         // 四風連打の処理
         if (this.#checkSufurenda()){
             for(var i = 0; i < 4; i++) this.players[i].resetEnableActions();
@@ -354,6 +370,11 @@ class Mahjong {
         this.can_declare_action = true;    // プレイヤーからの宣言を受け入れる状態にする
         const waiting_time = this.#getWaitTime() + 100;   // 何秒ほど待つべきか
         this.player_skip_responses = [...Array(4)].map((_,i) => !this.players[i].canAnyAction());  // 誰がアクションする可能性があるのか
+
+        // 他プレイヤーからの宣言がある可能性がある場合、持ち時間を記録する
+        for(var i = 0; i < 4; i++){
+            if (p != i && this.players[i].canAnyAction()) this.players[i].resetStartTime();
+        }
 
         // 全ユーザに情報を送る
         this.sendDiscardMsg(p, discard_tile, is_tsumo_giri);
@@ -420,6 +441,9 @@ class Mahjong {
         // プレイヤーpがaction_typeを宣言したことを全員に通知する    
         this.sendDeclareMsg(p, action_type);
 
+        console.log("[turnPlayerDeclareAction] %sが%sを宣言", player.getUserName(), action_type);
+        console.log("プレイヤーの手牌と鳴き牌を表示：" + player.getHands().toString() + player.getMelds().toString());
+
         if (action_type == 'kan') {
             var ret = [];
             var ankans = utils.canAnkan(player.getHands());
@@ -471,6 +495,8 @@ class Mahjong {
             console.log(`[ERROR, notTurnPlayerDeclareAction B] 宣言可能時間をオーバーしています`);
             return;
         }
+        // アクションをクリックした時点での経過時間を記録し、持ち時間を更新する
+        player.updateAllottedTime();
 
         // スキップが送られてきた場合は特殊処理  
         if (action_type == 'skip') {
@@ -511,6 +537,11 @@ class Mahjong {
     selectDeclaredAction(){  
         // declare_queueにこれ以上pushしないようにflag管理する
         this.can_declare_action = false;
+
+        // 誰かの宣言が決まった時点で鳴き待機プレイヤー全員の持ち時間を更新する
+        for(var i = 0; i < 4; i++){
+            if (this.players[i].time_start != null) this.players[i].updateAllottedTime();
+        }
 
         // declare_queueに何も入っていないなら、次にすべきアクションを実行する
         if (this.declare_queue.length == 0){
@@ -569,6 +600,9 @@ class Mahjong {
         let p1 = selected[0].player;  // 拾う人
         let meld_type = selected[0].action_type;  // ポン、チー、カンの種類
         this.next_process_info = {"func": null, "opt": {"p1":p1, "p2":p2, "discard": discard}}
+
+        // 宣言してから牌を捨てるまでの時間を計算する
+        this.players[p1].resetStartTime();
 
         let ret;  // 手牌から切るツモ達の候補
         if (meld_type == 'chi') {
@@ -831,6 +865,10 @@ class Mahjong {
         for (var i = 0; i < 4; i++) {
             this.players[i].checkEnableActionsForDrawReplacementTile(p, replacement_tile, kan_type, this.getFieldInfo());
         } 
+
+        // 嶺上ツモしてからの持ち時間を計算する
+        this.players[p].updateAllottedTime();
+        this.players[p].resetStartTime();
 
         // 全プレイヤーにpが嶺上ツモした情報を送る
         this.sendDrawMsg(p, replacement_tile, true);
@@ -1116,8 +1154,8 @@ class Mahjong {
         let waiting_time = 0;
         for (var i = 0; i < 4; i++) {
             if (this.players[i].canAnyAction()){
-                if (waiting_time < this.players[i].getAllottedTime() * 1000){
-                    waiting_time = this.players[i].getAllottedTime() * 1000;
+                if (waiting_time < (this.players[i].getAllottedTime()+this.additional_allotted_time) * 1000){
+                    waiting_time = (this.players[i].getAllottedTime()+this.additional_allotted_time) * 1000;
                 }
             }
         }
@@ -1233,6 +1271,7 @@ class Mahjong {
                 player: (draw_player - i + 4) % 4,  // player iから見てどこか 
                 action: (is_replacement_draw)? 'replacement-draw': 'draw', 
                 tile: tile, 
+                allotted_time: this.players[i].getAllottedTime(),
                 remain_tile_num: this.tiles.length,
                 opt: opt,
             });
@@ -1245,6 +1284,7 @@ class Mahjong {
      * @param {*} draw_player 
      * @param {*} draw_tile 
      * @param {*} is_tsumo_giri 
+     * @param {*} can_declare_player アクションをする可能性のある人のリスト
      * @param {Number or null} send_player_idx  送信する人のプレイヤーidx（nullなら全員）
      */
     sendDiscardMsg(discard_player, discard_tile, is_tsumo_giri, send_player_idx = null) {
@@ -1256,6 +1296,7 @@ class Mahjong {
                 action: 'discard',
                 is_tsumo_giri: is_tsumo_giri,
                 player: (discard_player - i + 4) % 4,  // player iから見てどこか
+                allotted_time: this.players[i].getAllottedTime(),
                 tile: discard_tile,
             });
         }                
@@ -1282,6 +1323,7 @@ class Mahjong {
                 enable_actions: this.players[i].getEnableActions(), 
                 player: (action_player - i + 4) % 4,  // player iから見てどこか 
                 action: action_type, 
+                allotted_time: this.players[i].getAllottedTime(),
                 meld: meld_info, 
                 opt: opt,
             });

@@ -170,3 +170,19 @@ exports.createBaojiaTiles = function(){
     return tiles;
 }
 
+
+// チーするときの候補が2つ以上あるときの確認用
+exports.createTwoCandidateTiles = function(){
+    let tiles = [...Array(136)].map((_, i) => i);
+    let inits = [
+        [0, 1, 2, 4, 5, 6, 12, 13, 14, 16, 17, 18, 9],
+        [0, 1, 2, 4, 5, 6, 12, 13, 14, 16, 17, 18, 9],
+        [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+        [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+    ];
+    for (var p = 0; p < 4; p++){
+        for (var i = 0; i < 13; i++)
+            tiles[p * 13 + i] = inits[p][i];
+    }
+    return tiles;
+}

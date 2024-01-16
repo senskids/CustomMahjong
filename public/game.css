@@ -182,6 +182,28 @@
     /* color: rgb(252, 252, 19); */
   }
 
+  .player-info-container{
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .my-remain-time{
+    display: inline-block;
+    padding: 0.5rem;
+    margin-left: auto;
+    margin-right: 20%;
+  }
+  
+  #addition-time{
+    font-size: 36px;
+    display: inline-block;
+  }
+  
+  #remain-time{
+    font-size: 36px;
+    display: inline-block;
+  }
+
   .meld-area{
     margin-left: auto;
     margin-right: 5%;
